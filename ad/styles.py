@@ -1,5 +1,6 @@
 """Style packs for the ad line: one look per market version. A pack is the project.py fields that make the look (the
-renderer is explain/render.py) plus a theme for ad/cards.py. ad/new.py writes a pack into a new project.py, where it
+renderer is explain/render.py) plus a theme for ad/cards.py, a narrator's manner and a Suno style for the music
+(ad/new.py writes it into each version's suno.md). ad/new.py writes a pack into a new project.py, where it
 can be changed freely; nothing reads the pack again after that except the cards.
 
 usage: python ad/styles.py            list the packs

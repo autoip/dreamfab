@@ -81,9 +81,11 @@ Before every batch that costs credits, give the price now and off-peak, and wait
    - **The product**: text-to-image v4 product shots, or image-to-video to make them move.
    - **The website**: `python ad/capture.py URL images/site_ja.png --lang ja --hide-corner`. Use move `frame` for a white page so the subtitles stay readable.
    - **Cards**: `python ad/cards.py P` draws `CARDS` as `images/<id>.png`.
-6. **Music**:
-   - Suno: write a style from the pack's suggestion for the user to generate, and put the file in the campaign folder.
-   - AutoIP's composer: `/voice/song`, 30 credits.
+6. **Music: Suno is recommended**. Suno has no API open to ordinary users, so the agent writes and the user pastes:
+   - **The agent writes `suno.md`** (every version starts with a draft): a title, the Style of Music (the pack's suggestion rewritten for this ad's mood), Exclude styles and the length. A bed under the narration is Instrumental; for a jingle that sings the brand, write lyrics too (`[Intro]`, `[Hook]`, `[Outro]`, sung in the market's language, the brand, promise and address as in the brief).
+   - **The user pastes it into Suno** (Custom mode), picks one, downloads it into `music/` and the file goes in `MUSIC`.
+   - The ad must not say the music was made with AutoIP.
+   - **All automatic, without Suno**: AutoIP's composer, `/voice/song` (30 credits); then the ad may say its music came from AutoIP. A long piece sometimes comes back a few seconds long (150 s asked, 2.6 s and 6.5 s returned): measure it first.
    - Without `CH_MUSIC` the music plays straight through. If a piece is too short, loop its middle sections on the beat.
 7. **Render** (no credits):
    ```bash
@@ -128,6 +130,7 @@ Text stays above y 760, clear of the subtitles. Each card can carry `zh="Chinese
 
 - **A new look for every language**: the same film with new subtitles does not feel made for its viewers. A different look and voice (the Korean version as a teasing variety show, say) does more than translation.
 - **Claims must hold**: if the music came from Suno, the ad cannot say the music was made with AutoIP; only say what AutoIP's composer can do.
+- **Music from Suno**: Suno has no API for ordinary users; the agent writes `suno.md` (style, lyrics) and the user pastes it in. AutoIP's composer is all automatic, but measure what comes back.
 - **Screenshot the site in the right language**: a site's `/locale/ja` link usually only sets a cookie the headless browser drops; `--lang ja` makes the browser itself ask for Japanese. `--hide-corner` covers the reCAPTCHA badge.
 - **White pages go in the frame**: white subtitles vanish on a white page across the whole picture; framed, they sit on the dark around it.
 - **Fonts**: subtitle fonts must be installed (libass cannot use web fonts); cards are web pages and can use Google Fonts. Korean lines break at spaces, Japanese and Chinese at commas.

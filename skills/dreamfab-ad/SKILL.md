@@ -60,8 +60,11 @@ Details: `ROOT/docs/en/ad/OVERVIEW.md` (中文：`ROOT/docs/zh-TW/ad/OVERVIEW.md
 5. **Pictures**: `CLIPS` from the user's footage; product shots (text-to-image v4 prompts are MOSS-Image prose, see
    the explain skill) and image-to-video; `PY ROOT/ad/capture.py URL images/site_<lang>.png --lang <lang> --hide-corner`;
    `CARDS` → `PY ROOT/ad/cards.py P`; review sheet → user.
-6. **Music**: write a Suno style from the pack's suggestion for the user (keep it in the campaign folder), or AutoIP
-   `/voice/song`; no `CH_MUSIC` = straight through; loop the middle on the beat if short.
+6. **Music: Suno by default** (it has no API for ordinary users): fill each version's `suno.md` (title, Style of
+   Music from the pack rewritten for this ad, Exclude styles, length; Instrumental for a bed, lyrics only for a sung
+   jingle in the market's language) and give it to the user to paste into Suno; the downloaded file goes in `music/`
+   and `MUSIC`. All automatic instead: AutoIP `/voice/song` (measure the length that comes back). The ad never says
+   Suno music came from AutoIP. No `CH_MUSIC` = straight through; loop the middle on the beat if short.
 7. **Render**: `SHOTS`, `CUTS` (30 s 16:9, 15 s 9:16 and 1:1 by default) → `PY ROOT/explain/render.py P --until <words>`
    for a new look → `PY ROOT/ad/render.py projects/<brand>/<campaign>` (every version and cut, then `delivery.md`).
    Check frames: subtitles clear of the picture, cards not cut off in the vertical and square cuts.
