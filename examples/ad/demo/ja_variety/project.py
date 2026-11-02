@@ -20,7 +20,7 @@ CARD_FONTS = dict(head="Noto Sans JP", body="Yu Gothic", zh="Microsoft JhengHei"
 STICKER_FONT = "Yu Gothic"
 
 # 配樂：自己寫曲風給使用者去 Suno 生成（風格包建議：instrumental, variety show background music, playful funky pop, bouncy slap bass, brass stabs, handclaps, whistle and xylophone accents, cheerful and comedic, 120 BPM, light enough for voiceover），或用 AutoIP 作曲；沒寫 CH_MUSIC 就一路放
-MUSIC = None
+MUSIC = "../music/kumo_oolong_ja.mp3"   # 照 suno.md 在 Suno 生成
 MUSIC_DB = -26
 
 # 卡片（ad/cards.py）：每張一個 id，畫成 images/<id>.png，SHOTS 直接用 id
