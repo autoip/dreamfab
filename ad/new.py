@@ -103,6 +103,7 @@ STYLE = "{pack}"
 VOICE = "../voices/NARR_{LANG}.wav"
 VOICE_FIELDS = dict(voice_engine="voxcpm2")
 SAY = []
+GAPS = dict(lead=0.8, chapter=0.6, title=2.2, part=0.4, end=3.5, xfade=0.6)   # an ad is tighter than an explainer
 
 TITLE = ("(title)", "(subtitle)")
 ENDCARD = ""

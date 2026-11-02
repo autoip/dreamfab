@@ -104,6 +104,7 @@ Before every batch that costs credits, give the price now and off-peak, and wait
 | `CARDS` | cards: `[dict(id=, kind=, ...)]`, see below |
 | `CARD_FONTS` | the cards' fonts: `dict(head=, body=, zh=, web=["Google Fonts family"])` |
 | `CUTS` | shorter cuts: clips, size, head line |
+| `GAPS` | tighter than an explainer by default: 0.8 s lead, 0.6 s between chapters, 2.2 s title, 3.5 s end |
 | `FILM` | cinema look: `dict(bars=130, warm=0.08, vignette=0.35)` black bars (16:9 only), a warm grade, a vignette |
 
 Everything else as on the explain line: `SCRIPT`, `VOICE`, `NARRATION`, `SHOTS`, `CLIPS`, `SUBS`, `CARD`, `STICKERS`, `LABELS`, `MUSIC`, ... ([the explain line's project.py](../explain/OVERVIEW.md#projectpy)).

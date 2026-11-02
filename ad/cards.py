@@ -32,7 +32,7 @@ THEMES = {   # bg, ink, accent, box, box border, box shadow, heading extra
                  muted="#cfd6e0", box="#16202f", border="2px solid #e8c860", shadow="none", head="", hcol="#f4efe2"),
     "variety": dict(bg="#fff8e8 radial-gradient(circle,#f3e6c8 2px,transparent 2.5px) 0 0/36px 36px", ink="#222",
                     accent="#ff4f8b", muted="#555", box="#fff", border="4px solid #222", shadow="6px 6px 0 #222",
-                    head="-webkit-text-stroke:4px #222;paint-order:stroke fill;text-shadow:6px 6px 0 #222;", hcol="#ff4f8b"),
+                    head="-webkit-text-stroke:3px #222;paint-order:stroke fill;text-shadow:5px 5px 0 #222;", hcol="#ff4f8b"),
     "keynote": dict(bg="#f7f8fa", ink="#111", accent="#3166ff", muted="#5b6b8c", box="#fff", border="none",
                     shadow="0 18px 50px rgba(20,40,90,.12)", head="letter-spacing:-2px;", hcol="#111"),
     "cinematic": dict(bg="radial-gradient(ellipse at 50% 40%,#2a2118 0%,#0b0a09 75%)", ink="#f3e3c3", accent="#d9b77a",
@@ -102,9 +102,9 @@ def build(proj, card):
         css = (".top{position:absolute;top:130px;width:100%;text-align:center;font-family:var(--head);font-size:120px;color:var(--accent);var(--hx)}"
                ".sub{position:absolute;top:300px;width:100%;text-align:center;font-size:44px}.sub .zh{font-size:32px}"
                ".row{position:absolute;top:420px;width:100%;display:flex;justify-content:center;align-items:center}"
-               ".st{width:190px;height:200px;border:var(--border);border-radius:22px;background:var(--box);box-shadow:var(--shadow);"
+               ".st{min-width:176px;padding:0 12px;box-sizing:border-box;height:200px;border:var(--border);border-radius:22px;background:var(--box);box-shadow:var(--shadow);"
                "display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}.n{font-size:28px;color:var(--accent)}"
-               ".w{font-family:var(--head);font-size:40px;white-space:nowrap}.st .zh{font-size:26px}.ar{font-size:50px;color:var(--accent);margin:0 4px}"
+               ".w{font-family:var(--head);font-size:34px;white-space:nowrap}.st .zh{font-size:26px}.ar{font-size:44px;color:var(--accent);margin:0 3px}"
                ".note{position:absolute;top:680px;width:100%;text-align:center;font-size:36px;color:var(--muted);font-weight:400}"
                ".note b{color:var(--accent);font-weight:400}")
     elif k == "prompt":
@@ -146,11 +146,13 @@ def build(proj, card):
         n = len(card["brands"])
         cols = "".join(f"<div class='c'><div class='nm'>{E(a)}</div><div class='u'>{E(u)}</div><div class='zh'>{E(z)}</div></div>"
                        + ("<div class='x'>×</div>" if i + 1 < n else "") for i, (a, u, z) in enumerate(card["brands"]))
-        body = f"<div class='row'>{cols}</div><div class='line'>{E(card.get('line', ''))}</div>"
-        css = (".row{position:absolute;top:300px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:40px}"
-               ".c{text-align:center;max-width:720px}.nm{font-family:var(--head);font-size:118px;color:var(--accent);var(--hx)}"
+        body = f"<div class='col'><div class='row'>{cols}</div><div class='line'>{E(card.get('line', ''))}</div></div>"
+        css = (".col{position:absolute;top:0;bottom:300px;left:0;right:0;display:flex;flex-direction:column;justify-content:center;"
+               "align-items:center;gap:44px}.row{display:flex;justify-content:center;align-items:center;gap:40px}"
+               ".c{text-align:center;max-width:" + ("1500px" if n == 1 else "720px") + "}"
+               ".nm{font-family:var(--head);font-size:118px;line-height:1.1;color:var(--accent);var(--hx)}"
                ".u{font-size:44px;margin-top:18px}.c .zh{font-size:32px;display:block;margin-top:14px}.x{font-size:80px;color:var(--muted)}"
-               ".line{position:absolute;top:640px;width:100%;text-align:center;font-size:40px;color:var(--muted)}")
+               ".line{font-size:40px;color:var(--muted)}")
     else:
         sys.exit(f"card {card['id']}: unknown kind {k!r}")
     head = "".join(f"<link href='https://fonts.googleapis.com/css2?family={w}&display=swap' rel='stylesheet'>" for w in f["web"])
