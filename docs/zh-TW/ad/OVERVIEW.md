@@ -105,6 +105,7 @@ projects/<品牌>/<活動>/
 | `CARD_FONTS` | 卡片的字型：`dict(head=, body=, zh=, web=["Google Fonts 家族"])` |
 | `CUTS` | 短版：片段、尺寸、上方標題 |
 | `GAPS` | 開案預設比解說緊湊：片頭 0.8、章節間 0.6、片名 2.2、片尾 3.5 秒 |
+| `CHAPTER_LABELS = False` | 不在畫面上放章名（開案預設；30 秒的廣告不需要） |
 | `FILM` | 電影感：`dict(bars=130, warm=0.08, vignette=0.35)` 寬銀幕黑邊（只在 16:9）、暖色、暗角 |
 
 其餘照解說線：`SCRIPT`、`VOICE`、`NARRATION`、`SHOTS`、`CLIPS`、`SUBS`、`CARD`、`STICKERS`、`LABELS`、`MUSIC`……（[解說線的 project.py](../explain/OVERVIEW.md#projectpy)）。

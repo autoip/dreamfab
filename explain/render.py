@@ -140,7 +140,9 @@ def build():
 
     # narration: each part's spoken text -> subtitle text and a time for every character; cut into one piece per
     # chapter and laid on the timeline with a breath between chapters (and the title after the first one)
-    heads = [(h, t[:8]) for h, t in chapters(proj)]
+    # each chapter is found by its first line (up to 30 characters): 8 were too few once a chapter opened with a name
+    # said earlier ("Kumo Oolong. Cold tea" after "Meet Kumo Oolong"), and the cut fell in the middle of a sentence
+    heads = [(h, t.split("\n")[0][:30]) for h, t in chapters(proj)]
     parts, items = [], narration(proj)
     missing = [it["audio"] for it in items if not it.get("sound") and not os.path.exists(words_path(it["audio"]))]
     if missing:   # a freshly cut or re-read file: time its words first
@@ -352,7 +354,7 @@ def build():
                        f"{hy})}}{head}")
     else:
         ass += sub_events(sub, [(a, b, both(s, t2)) for a, b, s, t2 in subs], W, H)
-    for t0, name in chaps:
+    for t0, name in chaps if getattr(proj, "CHAPTER_LABELS", True) else []:   # an ad of 30 s needs no chapter names
         st = 0.5 if t0 < LEAD + 1 else t0 - 0.2
         ass.append(f"Dialogue: 0,{ass_time(st)},{ass_time(st + 4.5)},Chap,,0,0,0,,{{\\fad(400,500)}}{name}")
     op = next((k for k, pc in enumerate(pieces) if pc[5] and pc[5] == first_head), None)

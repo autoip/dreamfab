@@ -123,6 +123,7 @@ projects/<系列>/
 | `MUSIC`、`MUSIC_DB`、`CH_MUSIC` | 伴奏、每段的音量、每章從第幾秒開始 |
 | `MV_CLIP` | `"MV:秒"` 畫面用的影片 |
 | `GAPS` | 片頭、章節間、片名、段落間、片尾、交叉淡化的秒數 |
+| `CHAPTER_LABELS` | 選用：`False` 不在畫面上放章名（章節照樣切、照樣印出時間） |
 | `LOOKS`、`NEG`、`IMAGES`、`IMAGE_FIELDS` | 生圖（見步驟 4） |
 | `SHOTS` | 時間軸（見步驟 6） |
 | `SHORTS` | 直版的片段、上方標題、結尾字、版面，每集都寫（見步驟 9）；`EDITS` 加 `"shorts": {"suffix": "_shorts"}` |

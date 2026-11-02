@@ -128,6 +128,7 @@ All optional; without them an episode is made as above. The ad line ([ad/](../ad
 | `MUSIC`, `MUSIC_DB`, `CH_MUSIC` | the instrumental, each section's level, each chapter's start second |
 | `MV_CLIP` | the video `"MV:<second>"` shots play |
 | `GAPS` | seconds of lead-in, between chapters, for the title, between parts, at the end, and of cross-fades |
+| `CHAPTER_LABELS` | optional: `False` shows no chapter names (chapters are still cut and their times printed) |
 | `LOOKS`, `NEG`, `IMAGES`, `IMAGE_FIELDS` | pictures (step 4) |
 | `SHOTS` | the timeline (step 6) |
 | `SHORTS` | the vertical Short's clips, head line, closing line and layout, in every episode (step 9); add `"shorts": {"suffix": "_shorts"}` to `EDITS` |

@@ -46,7 +46,7 @@ if __name__ == "__main__":
             subprocess.run([py, os.path.join(HERE, "cards.py"), d], check=True)
         subprocess.run([py, os.path.join(REPO, "explain", "render.py"), d], check=True)
     rows = ["# 交件清單", "", "| 版本 | 檔案 | 尺寸 | 長度 | 響度 | 字幕 |", "|---|---|---|---|---|---|"]
-    for d in todo:
+    for d in versions(camp, []):   # the list covers the whole campaign, not just the versions rendered now
         for f in sorted(glob.glob(os.path.join(d, "out", "*.mp4"))):
             if os.path.basename(f).startswith("_"):
                 continue

@@ -40,7 +40,7 @@ PACKS = {
         voice="soft, intimate film narrator",
         music="instrumental, emotional film score, felt piano, warm strings, slow build, tender and hopeful, 80 BPM, "
               "leaves room for a voiceover",
-        fields=dict(SUBS=dict(style="outline", size=48, size2=34),
+        fields=dict(SUBS=dict(style="outline", size=46, size2=32, margin=16),   # inside the bottom bar
                     FILM=dict(bars=130, warm=0.08, vignette=0.35),
                     LABELS=dict(chap=("&H00C3E3F3", "&H60000000"), title=("&H00C3E3F3", "&H60000000"))),
         theme="cinematic",

@@ -37,6 +37,8 @@ if cmd == "jobs":
     voice = os.path.join(D, proj.VOICE)
     if not os.path.exists(voice):
         sys.exit(f"no voice sample {voice} (proj.VOICE)")
+    if len(getattr(proj, "VOICE_FIELDS", {}).get("style", "")) > 50:   # the API rejects the job (no credits are spent)
+        sys.exit(f"VOICE_FIELDS style is {len(proj.VOICE_FIELDS['style'])} characters: the voice API takes 50 at most")
     parts, cur = [], []
     for head, text in chapters(proj):
         if cur and len("\n\n".join(cur + [text])) > limit:
