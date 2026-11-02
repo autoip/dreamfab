@@ -180,10 +180,10 @@ Edits go in `project.EDITS`, one entry per cut, for example `full` and `short`. 
 
 ```python
 EDITS = {
-    "short": dict(cut=57.4, end=118.3, open_s=2, end_s=3, suffix="_1min", shots="""
+    "short": dict(cut=57.4, end=118.3, open_s=0, end_s=3, suffix="_1min", shots="""
         57.4 W1 0 flash | 58.2 D1 | 59.0 LS01 | 60.3 B10 ...
     """),
-    "full": dict(cut=6.3, end=132.0, open_s=4, end_s=6, shots="""
+    "full": dict(cut=6.3, end=132.0, open_s=0, end_s=6, shots="""
         6.3 B01 | 8.4 B02 ...
         @short                          # reuse the short cut as-is
         119.1 B28 0 flash ...

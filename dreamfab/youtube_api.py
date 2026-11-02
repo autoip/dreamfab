@@ -1,5 +1,5 @@
 """YouTube Data API login and helpers shared by every uploader (drama/youtube_upload.py, mv/youtube_upload.py) and
-dreamfab/youtube_playlists.py.
+dreamfab/youtube_playlists.py; analytics() for dreamfab/youtube_analytics.py (YouTube Analytics API, read only).
 
 Credentials: YT_CLIENT_SECRET = an OAuth client of type "Desktop app" (default
 ~/.config/dreamfab/youtube_client_secret.json; ~/.config/dreamfab/ from before the merge is still read when the
@@ -9,6 +9,8 @@ YT_CHANNEL_ID (optional) = the only channel a script may act on.
 import os, sys, time
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.force-ssl"]
+ANALYTICS = "https://www.googleapis.com/auth/yt-analytics.readonly"   # only asked for by analytics(): uploads keep working
+                                                                      # on a login made before it
 
 
 def _secret():
@@ -25,14 +27,17 @@ SECRET = _secret()
 TOKEN = os.path.join(os.path.dirname(SECRET), "youtube_token.json")
 
 
-def youtube():
+def _creds(scopes):
+    """The saved login when it covers `scopes` (refreshed if needed), else a new one in the browser."""
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
-    from googleapiclient.discovery import build
     if not os.path.exists(SECRET):
         sys.exit(f"no OAuth client at {SECRET} (docs/*/PUBLISHING.md: automatic upload)")
-    creds = Credentials.from_authorized_user_file(TOKEN, SCOPES) if os.path.exists(TOKEN) else None
+    creds = Credentials.from_authorized_user_file(TOKEN) if os.path.exists(TOKEN) else None
+    if creds and not creds.has_scopes(scopes):
+        print("  the saved login does not cover", ", ".join(s.rsplit("/", 1)[-1] for s in scopes if s not in (creds.scopes or [])))
+        creds = None
     if creds and not creds.valid and creds.refresh_token:
         try:
             creds.refresh(Request())
@@ -42,10 +47,22 @@ def youtube():
     if not creds or not creds.valid:
         print("  log in with the channel's Google account (if the account owns several channels, pick the right one);")
         print("  if no browser opens, open the URL below in a browser on this computer")
-        creds = InstalledAppFlow.from_client_secrets_file(SECRET, SCOPES).run_local_server(port=0, prompt="consent")
+        creds = InstalledAppFlow.from_client_secrets_file(SECRET, scopes).run_local_server(port=0, prompt="consent")
         with open(TOKEN, "w") as f:
             f.write(creds.to_json())
-    return build("youtube", "v3", credentials=creds)
+    return creds
+
+
+def youtube():
+    from googleapiclient.discovery import build
+    return build("youtube", "v3", credentials=_creds(SCOPES))
+
+
+def analytics():
+    """YouTube Analytics API v2 (views, watch time, retention, traffic sources...). The first call logs in again to
+    add read-only analytics to the saved login; the Google Cloud project needs the YouTube Analytics API enabled."""
+    from googleapiclient.discovery import build
+    return build("youtubeAnalytics", "v2", credentials=_creds(SCOPES + [ANALYTICS]))
 
 
 def channel(yt, lock=False, expect=None):

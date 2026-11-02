@@ -182,6 +182,7 @@ An edit can carry its own `render=dict(...)` that overrides these. For example, 
 | `intro_s` / `title_s` | 2.4 / 2.6 | Seconds the character intro card / title card stays |
 | `end_text` | 未完待續 | Used when `end` has no text ("To be continued") |
 | `badge` | — | e.g. `"第1集"`: small tag in the top-right corner for the whole episode |
+| `banner` / `banner_y` | — / 0.075 | e.g. `"公主穿越到現代｜第{ep}集"` ("a princess lands in the present ｜ ep. {ep}"): the premise across the top for the whole episode, so a stranger who swipes onto one episode in the Shorts feed gets the setup at once (`{ep}` is the episode number; what follows `｜` is in the accent colour, lightened when it is dark) / the banner's top as a fraction of the height (0.075 vertical, below the app's top buttons) |
 | `accent` | `F2C55C` | Colour of the character intro card's bar and title, and the episode number on the title card (also the user names of livestream comments) |
 | `chat_y` / `chat_rows` | 0.66 (vertical) / 0.8 (landscape) / 5 | Height of the lowest livestream comment as a fraction / comments on screen at once |
 

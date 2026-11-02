@@ -41,6 +41,28 @@ python dreamfab/library.py list projects      # 只列出找到哪些系列、�
 - 只聽 `127.0.0.1`，不對外開放。短劇和 MV 的索引存在共用資料庫 `~/.config/dreamfab/dreamfab.db`（在 repo 外面），開著的時候會自己重新索引；解說頁每次打開都直接讀資料夾，新檔案馬上看得到。
 - 網址可以直接貼進對話：agent 剪好一集，就回一個資源庫網址讓你點開審片；你也可以把某一集、某顆鏡頭的網址貼給 agent，說哪裡要改。
 
+## 看數據：YouTube 分析
+
+`python dreamfab/youtube_analytics.py pull` 抓這個頻道的 YouTube 分析（只讀），`report` 照產線整理成一份報表。第一次 `pull` 會再登入一次，在同一份登入加上唯讀的分析權限（上傳用舊的登入照常）；OAuth 用戶端所在的 Google Cloud 專案要啟用「YouTube Analytics API」（沒啟用時錯誤訊息會給網址）。YouTube 的數據大約晚兩天。
+
+```
+python dreamfab/youtube_analytics.py pull
+python dreamfab/youtube_analytics.py report --group "短劇=^S\dE\d" --group "合集=完全版" --group "解說=解說" --md report.md
+python dreamfab/youtube_analytics.py pull --since 2026-11-03     # 改了開頭或標題以後，只看那天之後
+```
+
+怎麼讀。括號裡是我們的頻道上線三週第一次看到的，和當天就改的事：
+
+1. **Shorts 和長片分開看。** Shorts 帶觀看，長片帶觀看時間和訂閱（Shorts 佔 63% 觀看，只佔 22% 觀看時間；新訂閱多半來自長片）。
+2. **各條線看每支的中位數，不看總數。** 一支爆紅的影片會把總數拉歪（一支 Shorts 1,245 次，同線中位數 35 次）。
+3. **看開頭 5% 還剩多少人。** 長片在 5% 就走掉兩成以上，先看第一秒放了什麼（每支 MV 開頭都有 4 秒品牌卡，前 5% 走掉 16–45%）。已上架的在 Studio 編輯器剪掉開頭：網址、觀看、留言都留著，上傳的字幕會跟著提前，說明欄的章節要自己往前移。以後的 MV 用 `open_s=0`，品牌只放片尾（[mv/PROJECT_FORMAT.md](mv/PROJECT_FORMAT.md)）。
+4. **分集一季比一季少人看，就是陌生人看不懂。** 分集短劇是在 Shorts 動態被不認識這部劇的人滑到的（第一季 903 次，第二季 174 次，第三季 44 次），標題寫「三個前任聯手」只有老觀眾懂。標題只寫「誰＋衝突」；畫面頂端放前提橫幅（`TYPO["banner"]`，[drama/PROJECT_FORMAT.md](drama/PROJECT_FORMAT.md)）；一天上 1–2 集，不要一次 5 集。
+5. **搜尋字。** 報表會標出標題裡還沒有的搜尋字，補進標題（觀眾搜的是古詩名、傳說名、成語，和「穿越劇」這種劇種名）。說明欄產生器（`make_seo.py`、`YouTube_SEO.txt`）也要一起改，不然下次 `--refresh` 會改回去。正在跑標題「測試與比較」的影片，API 不能改標題，等測試結束。
+6. **國家。** 觀看多、但每次不到 6 秒的國家，是 Shorts 動態推給看不懂這個語言的人，會拉低完播率。
+7. **沒效果的就別花時間。** 片尾畫面、資訊卡、Shorts「相關影片」帶來的觀看都只有個位數。但「相關影片」要設對（11 支 MV Shorts 沒設、1 支連到別首歌）。
+8. **外部網站。** GitHub 的 README 帶來 93 次觀看，比很多支影片多。README 裡放表現最好的影片。
+9. **改完一週再看一次。** 用 `pull --since 改的那天` 只看改了以後的數字。樣本小的時候，結論只當假設。
+
 ## `dreamfab/` 的檔案
 
 | 檔案 | 做什麼 |
@@ -49,7 +71,8 @@ python dreamfab/library.py list projects      # 只列出找到哪些系列、�
 | `util.py` | 讀專案、ffmpeg、NVIDIA 編碼器（有就自動用）、點數估算 |
 | `enhance.py` | 本機 NVIDIA 超分 2 倍＋補幀 60 fps 的引擎（各條線的 `enhance.py` 呼叫它）：[GPU_ENHANCE.md](GPU_ENHANCE.md) |
 | `library.py` | 所有系列的本機資源庫網頁（見上一節） |
-| `youtube_api.py`、`youtube_playlists.py` | YouTube 登入（頻道鎖定）、播放清單整理 |
+| `youtube_api.py`、`youtube_playlists.py` | YouTube 登入（頻道鎖定；分析用的唯讀權限只在 `analytics()` 時才要）、播放清單整理 |
+| `youtube_analytics.py` | YouTube 分析（只讀）：`pull` 抓每支影片和頻道的數字，`report` 照產線整理（見上一節） |
 | `db.py` | 共用資料庫：所有產線、所有系列的資源庫索引和上架紀錄都在同一個 SQLite 檔 `~/.config/dreamfab/dreamfab.db`（`show` 看內容；舊版每個系列一個的 `library.db` 和 `youtube_log.db` 會自己併進來，`merge` 一次併完，見 [SETUP.md〈從舊版更新〉](SETUP.md#7-從舊版更新)） |
 | `youtube_log.py` | 上架紀錄（共用資料庫的 `youtube_log` 表）：上傳、更新、公開、留言、置頂、片尾、資訊卡、說明欄連結，每一件都記時間（上傳程式自動記，Studio 手動做的用 `add` 補記）；`sync` 跟 YouTube 對帳（只讀：誰公開了、Studio 手動上傳的也補記），`stats` 列出每天出貨和庫存；資源庫首頁的「庫存與出貨」「出貨紀錄」和解說單集頁讀它 |
 | `workflow.py` | 工作流程開關：離峰才送、同時幾個任務、解說直版、GPU 超分、上傳狀態、上架紀錄，各自開或關；你自己一份、系列可以另外設（[WORKFLOW.md](WORKFLOW.md)） |

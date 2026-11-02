@@ -82,14 +82,14 @@ VOICE_BOTH = [(163.3, 181.5), ...]          # optional: spans both sing together
 ## Edits: `EDITS`
 
 ```python
-EDITS = {"short": dict(cut=57.4, end=118.3, open_s=2, end_s=3, suffix="_1min", shots="""..."""),
-         "full":  dict(cut=6.3, end=132.0, open_s=4, end_s=6, shots="""... @short ...""")}
+EDITS = {"short": dict(cut=57.4, end=118.3, open_s=0, end_s=3, suffix="_1min", shots="""..."""),
+         "full":  dict(cut=6.3, end=132.0, open_s=0, end_s=6, shots="""... @short ...""")}
 ```
 
 | Field | Description |
 |---|---|
 | `cut` / `end` | Which part of the song to use |
-| `open_s` / `end_s` | Length of the opening and end cards in seconds. Automatically 0 if the card file doesn't exist |
+| `open_s` / `end_s` | Length of the opening and end cards in seconds. Automatically 0 if the card file doesn't exist. Keep the opening at 0 and put the brand on the end card only: the first seconds are when viewers decide whether to stay, and on our channel a 4-second brand card lost 16–45% of a full MV's viewers in its first 5% (about 12 s). Open on the strongest shot and the first line of the song |
 | `size` | Canvas size, default `(1920, 1080)`; `(1080, 1920)` renders in portrait (see WORKFLOW, "Vertical cut") |
 | `focus` | `{clip id: 0–1}`, the horizontal crop centre when cropping to portrait, default 0.5; generate it with `qc/focus.py`. A key `"clip id@row time"` (e.g. `"LS06@133.2"`) sets one shot only, for a subject that moves across the clip. The value is a fraction of the crop window's travel, not a frame position: for a 16:9 clip in a 9:16 crop the window centre ≈ 0.16 + 0.68 × focus (a subject at x 0.75 needs 0.87) |
 | `zones` | Replaces the subtitle engine's lyric-row positions `{"TL": (x, y), ...}`, for the portrait canvas |

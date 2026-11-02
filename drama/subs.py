@@ -10,6 +10,10 @@ Everything comes from the edit (timeline.resolve) and project.TYPO:
   intro_s / title_s          seconds an intro card / the title card stays (2.4 / 2.6)
   end_text                   text of a bare `end` flag (default 未完待續)
   badge                      e.g. "第1集": small corner tag for the whole episode (default none)
+  banner / banner_y          e.g. "公主穿越到現代｜第{ep}集": the premise across the top for the whole episode, so
+                             someone who lands on one episode in the Shorts feed gets the setup at once ({ep} = EPISODE,
+                             after ｜ in the accent colour; default none) / its top as a fraction of the height (0.075
+                             vertical: below the app's top buttons; 0.04 landscape)
   accent                     RRGGBB of the intro bar, role line and title rule (default F2C55C)
   chat_y / chat_rows         livestream comments: bottom of the stack as a fraction of the height (default 0.66 / 0.8),
                              comments on screen at once (default 5)
@@ -132,7 +136,9 @@ def build(proj, tl, W, H):
         f"Style: Chat,{font},{FS(34)},&H00FFFFFF,&H000000FF,&H70000000,&H70000000,0,0,0,0,100,100,{u:.1f},0,3,{8 * u:.1f},0,1,0,0,0,1",
         f"Style: End,{font},{FS(104 if vert else 96)},&H00FFFFFF,&H000000FF,&H00101010,&H90000000,0,0,0,0,100,100,{14 * u:.1f},0,1,{4 * u:.1f},{3 * u:.1f},5,0,0,0,1",
         f"Style: Box,{font},10,&H00000000,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+        f"Style: Banner,{font},{FS(44)},&H00FFFFFF,&H000000FF,&H50000000,&H50000000,0,0,0,0,100,100,{2 * u:.1f},0,3,{12 * u:.1f},0,8,0,0,0,1",
     ]
+    top = (150 if vert else 50) * u + (90 * u if T.get("banner") else 0)   # labels and the badge sit below a banner
     ev, cues = [], []
     rect = lambda w, h: f"m 0 0 l {w:.0f} 0 {w:.0f} {h:.0f} 0 {h:.0f}"
 
@@ -230,7 +236,7 @@ def build(proj, tl, W, H):
             if getattr(proj, "EPISODE", None):
                 ev.append(f"Dialogue: 3,{ts(t0 + 0.2)},{ts(t0 + d)},Ep,,0,0,0,,{{\\pos({W / 2:.0f},{y + 95 * u:.0f})\\fad(250,400)}}第 {proj.EPISODE} 集")
         if f.get("label"):
-            ev.append(f"Dialogue: 3,{ts(t0)},{ts(b['t1'])},Label,,0,0,0,,{{\\pos({50 * u:.0f},{(150 if vert else 50) * u:.0f})\\fad(150,150)}}{f['label']}")
+            ev.append(f"Dialogue: 3,{ts(t0)},{ts(b['t1'])},Label,,0,0,0,,{{\\pos({50 * u:.0f},{top:.0f})\\fad(150,150)}}{f['label']}")
         if f.get("end"):  # cliffhanger: over the freeze (or the last 1.6 s of the row)
             txt = f["end"] if isinstance(f["end"], str) else T.get("end_text", "未完待續")
             a = b["t1"] if b.get("freeze") else max(t0, b["t1"] - 1.6)
@@ -251,7 +257,17 @@ def build(proj, tl, W, H):
                 at = f"\\move({x:.0f},{y + step:.0f},{x:.0f},{y:.0f},0,150)" + ("\\fad(150,0)" if k == 0 else "")
                 ev.append(f"Dialogue: 2,{ts(times[i + k])},{ts(z)},Chat,,0,0,0,,{{\\an1{at}}}{{\\c{col(accent)}}}{who}：{{\\c&HFFFFFF&}}{text}")
     if T.get("badge"):
-        ev.append(f"Dialogue: 1,{ts(0)},{ts(tl['total'])},Label,,0,0,0,,{{\\pos({(W - 50 * u):.0f},{(150 if vert else 50) * u:.0f})\\an9}}{T['badge']}")
+        ev.append(f"Dialogue: 1,{ts(0)},{ts(tl['total'])},Label,,0,0,0,,{{\\pos({(W - 50 * u):.0f},{top:.0f})\\an9}}{T['badge']}")
+    if T.get("banner"):
+        text = T["banner"].replace("{ep}", str(getattr(proj, "EPISODE", "")))
+        if "｜" in text:
+            head, tail = text.split("｜", 1)
+            rgb = [int(accent[i:i + 2], 16) for i in (0, 2, 4)]
+            if (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255 < 0.5:   # a dark accent: lighter on the dark box
+                rgb = [round(c + (255 - c) * 0.55) for c in rgb]
+            text = f"{head}{{\\c{col(''.join(f'{c:02X}' for c in rgb))}}}｜{tail}"
+        y = H * T.get("banner_y", 0.075 if vert else 0.04)
+        ev.append(f"Dialogue: 1,{ts(0)},{ts(tl['total'])},Banner,,0,0,0,,{{\\an8\\pos({W / 2:.0f},{y:.0f})}}{text}")
 
     head = ["[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", "WrapStyle: 0", "ScaledBorderAndShadow: yes", "",
             "[V4+ Styles]", "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
