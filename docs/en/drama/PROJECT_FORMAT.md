@@ -133,7 +133,7 @@ How to write `shots`:
 | `intro=KEY` | Character intro card: title + name |
 | `title` | Title card: the drama's name + episode number |
 | `label=前情提要` | Label in the top-left corner, for the whole row |
-| `heard` | Subtitle what `speech.py` actually heard instead of the script line (an NG reel take that read the stage directions out) |
+| `heard`, `heard=text` | Subtitle what `speech.py` actually heard instead of the script line (an NG reel take that read the stage directions out); `heard=text` writes it yourself when what was heard is too long to show (a long laugh) |
 | `chat=NAME` | Livestream comments: the comments in `CHAT[NAME]` scroll up one by one from the bottom left over this row (intro cards sit on the left too: not on the same row) |
 
 Livestream comments go in `CHAT = {"hate": [("夜貓子", "這身材也敢跳？"), ...], ...}`: they are laid on as subtitles, not generated (phone screens always face away from the camera).

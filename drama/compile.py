@@ -9,7 +9,8 @@ COMP_DIR/project.py:
                                                           # a text card (endcard.py) over the next part's first frame
                                                           # (bg="prev": the previous part's last frame)
             dict(video="path.mp4", srt="path.srt", chapter="MV", cut=6.0),   # any video in the same frame size
-                                                          # (cut: seconds off its end, e.g. its own end card)
+                                                          # (cut: seconds off its end, e.g. its own end card;
+                                                          #  start: seconds off its beginning, e.g. an intro card)
             dict(clips=[("../s1e01_x", 2.4, 6.4), ...], chapter="Highlights", flash=0.12, sfx="../sfx/hit.wav")]
                                                           # a hook: pieces of the finished episodes (seconds on their
                                                           # out/<NAME>.mp4), joined with a white flash and the sfx
@@ -78,7 +79,8 @@ for p in proj.PARTS:
                           srt=os.path.join(e.DIR, "out", f"{ep_name(e)}.{R['lang']}.srt"),
                           chapter=p.get("chapter") or f"第{getattr(e, 'EPISODE', '?')}集 {title}"))
     elif "video" in p:
-        parts.append(dict(kind="video", src=p["video"], dur=dur_of(p["video"]) - p.get("cut", 0.0), srt=p.get("srt"),
+        parts.append(dict(kind="video", src=p["video"], start=p.get("start", 0.0),
+                          dur=dur_of(p["video"]) - p.get("cut", 0.0) - p.get("start", 0.0), srt=p.get("srt"),
                           chapter=p.get("chapter") or os.path.splitext(os.path.basename(p["video"]))[0]))
     elif "clips" in p:
         items = []
@@ -97,7 +99,7 @@ for n, p in enumerate(parts):
     out = os.path.join(WORK, f"part_{n:02d}.mp4")
     if p["kind"] == "card":
         nb = parts[n + 1] if p["bg"] == "next" else parts[n - 1]
-        at = ["-ss", "0.3"] if p["bg"] == "next" else ["-sseof", "-0.1"]
+        at = ["-ss", f"{nb.get('start', 0.0) + 0.3:.3f}"] if p["bg"] == "next" else ["-sseof", "-0.1"]
         src = nb.get("src")
         if nb["kind"] == "clips":   # the hook's first / last piece, on its episode
             it = nb["items"][0 if p["bg"] == "next" else -1]
@@ -154,7 +156,7 @@ for n, p in enumerate(parts):
         lv = loudness(p["src"]) if has_audio(p["src"]) else None
         gain = 0.0 if lv is None else R["lufs"] - lv
         audio = ["-af", f"volume={gain:.2f}dB,aresample=48000"] if lv is not None else []
-        ins = ["-i", p["src"]] + ([] if lv is not None else ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"])
+        ins = ["-ss", f"{p.get('start', 0.0):.3f}", "-i", p["src"]] + ([] if lv is not None else ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"])
         run(["ffmpeg", "-v", "error", "-y", *ins, "-t", f"{p['dur']:.3f}", "-map", "0:v", "-map", "0:a" if lv is not None else "1:a",
              "-vf", f"scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,fps={FPS},"
                     "setsar=1,format=yuv420p", *audio, "-ac", "2", *venc("final"), "-c:a", "aac", "-b:a", "256k", out])
@@ -177,7 +179,8 @@ for n, p in enumerate(parts):
     else:
         chapters.append((pending if pending is not None else t, p["chapter"]))
         pending = None
-        cues += [(t + a, t + min(b, d), x) for a, b, x in srt_read(p.get("srt")) if a < d]
+        s0 = p.get("start", 0.0)
+        cues += [(t + max(0.0, a - s0), t + min(b - s0, d), x) for a, b, x in srt_read(p.get("srt")) if b > s0 and a - s0 < d]
     t += d
 mmss = lambda v: f"{int(v // 3600)}:{int(v % 3600 // 60):02d}:{int(v % 60):02d}" if v >= 3600 else f"{int(v // 60):02d}:{int(v % 60):02d}"
 open(os.path.join(OUT, f"{proj.NAME}_chapters.txt"), "w", encoding="utf-8").write(

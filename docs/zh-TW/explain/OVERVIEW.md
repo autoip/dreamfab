@@ -97,9 +97,11 @@ projects/<系列>/
 | `LINE = "explain"` | 資源庫把這個資料夾當一般檔案瀏覽 |
 | `NAME`、`RENDER`、`EDITS` | 輸出檔名、字幕語言；`EDITS` 給上傳程式用 |
 | `SCRIPT`、`VOICE` | 文案、旁白樣本 |
+| `VOICE_FIELDS` | 選用：語音克隆多帶的欄位，例如方言語音 v3 `dict(voice_engine="voxcpm2", dialect="sichuan")`（文案要用方言用字寫） |
 | `SAY` | （字幕原文, 配音稿）成對，一樣長 |
 | `NARRATION` | 選用：實際播哪些音檔（剪過、補唸過時） |
 | `TITLE`、`ENDCARD` | 開場後的片名（主標、副標）；最後的 AI 生成字卡 |
+| `FACTS` | 選用：文案的查證，旁白講完後一張一張快速帶過（`[("標題", "第一行\n第二行"), ...]`，每張 `FACTS_S` 秒，預設 2.4），畫面壓暗，AI 生成字卡照樣放最後；只在長片 |
 | `FONT` | （字型家族名, 資料夾）：`python dreamfab/make_static_font.py NotoSerifTC-VF.ttf 600 "Explainer Serif" fonts/ExplainerSerif.ttf` |
 | `SUBS` | 字幕樣式：`dict(style=..., font=字型家族名, size=58)`，使用者從 `sub_styles.py` 的對照圖選（見步驟 6）。`style`：`outline` 白字細黑邊（預設）、`heavy` 米白字深棕粗邊、`gold` 再加細金框、`band` 底部柔光暗帶。字型檔放在 `FONT` 那個資料夾 |
 | `MUSIC`、`MUSIC_DB`、`CH_MUSIC` | 伴奏、每段的音量、每章從第幾秒開始 |

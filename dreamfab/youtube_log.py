@@ -201,9 +201,8 @@ def videos():
     return out
 
 
-def day_counts(days=7):
-    """{channel: {day: (uploaded, published, out)}} for the last days; out counts a video once however many of its
-    steps fell on that day (what the daily cap counts)."""
+def day_sets(days=7):
+    """{channel: {day: (uploaded ids, published ids)}} for the last days."""
     ch = {v["video"]: v["channel"] for v in videos()}
     if not ch:
         return {}
@@ -214,12 +213,24 @@ def day_counts(days=7):
                                     "AND at >= ?", (first,)):
         got[ch.get(v, "?")][at[:10]][action == "publish"].add(v)
     db.close()
-    return {c: {d: (len(u), len(p), len(u | p)) for d, (u, p) in per.items()} for c, per in got.items()}
+    return got
+
+
+def day_counts(days=7):
+    """{channel: {day: (uploaded, published, out)}} for the last days; out counts a video once however many of its
+    steps fell on that day (what the daily cap counts)."""
+    return {c: {d: (len(u), len(p), len(u | p)) for d, (u, p) in per.items()} for c, per in day_sets(days).items()}
+
+
+def videos_out_today(channel):
+    """The videos the channel has uploaded or published today: each counts once against the cap."""
+    u, p = day_sets(1).get(channel, {}).get(date.today().isoformat(), (set(), set()))
+    return u | p
 
 
 def out_today(channel):
     """Videos the channel has uploaded or published today."""
-    return day_counts(1).get(channel, {}).get(date.today().isoformat(), (0, 0, 0))[2]
+    return len(videos_out_today(channel))
 
 
 def quota(channel, project=None):

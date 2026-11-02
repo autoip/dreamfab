@@ -102,9 +102,11 @@ Every batch that costs credits is quoted at full and off-peak price first and wa
 | `LINE = "explain"` | the library serves the folder as plain files |
 | `NAME`, `RENDER`, `EDITS` | output name, subtitle language; `EDITS` is for the uploader |
 | `SCRIPT`, `VOICE` | the script, the narrator's sample |
+| `VOICE_FIELDS` | optional: more voice-clone fields, e.g. the dialect voice v3 `dict(voice_engine="voxcpm2", dialect="sichuan")` (write the script in the dialect's own words) |
 | `SAY` | (written, spoken) pairs of the same length |
 | `NARRATION` | optional: which audio files play (after a cut or a re-read) |
 | `TITLE`, `ENDCARD` | the title after the opening (title, subtitle); the closing AI-made card |
+| `FACTS` | optional: the script's fact check, one quick card each after the narration (`[("heading", "line\nline"), ...]`, `FACTS_S` seconds each, default 2.4) over the darkened picture, before the AI-made card; full cut only |
 | `FONT` | (font family, folder): `python dreamfab/make_static_font.py NotoSerifTC-VF.ttf 600 "Explainer Serif" fonts/ExplainerSerif.ttf` |
 | `SUBS` | the subtitle look: `dict(style=..., font=family, size=58)`, picked by the user from `sub_styles.py`'s sheet (step 6). `style`: `outline` white with a thin dark edge (default), `heavy` ivory with a thick dark-brown edge, `gold` that plus a thin gold rim, `band` a soft dark strip along the bottom. The font file goes in `FONT`'s folder |
 | `MUSIC`, `MUSIC_DB`, `CH_MUSIC` | the instrumental, each section's level, each chapter's start second |

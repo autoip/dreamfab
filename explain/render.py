@@ -1,6 +1,7 @@
 """Render an explainer: still pictures with smooth pans and zooms and cross-fades, the narration, subtitles timed to
 the voice (pinyin alignment), a music bed from the series' MV (one section per chapter, ducked under the voice),
-an MV clip and other covers in a gold frame, a title after the opening and an AI-made end card. No credits.
+an MV clip and other covers in a gold frame, a title after the opening, quick fact-check cards after the narration
+and an AI-made end card. No credits.
 
 usage: python explain/render.py PROJECT_DIR [--until TEXT] [--out out/NAME.mp4] [--full-only]
        python explain/render.py PROJECT_DIR --shorts [--layout band|square] [--out out/NAME_shorts.mp4]
@@ -18,7 +19,9 @@ usage: python explain/render.py PROJECT_DIR [--until TEXT] [--out out/NAME.mp4] 
                  square: a 1:1 cut from the middle of each picture, larger on the phone (keep head to one line).
                  Render both (--layout ... --out ...) and let the user choose before setting SHORTS["layout"]
 Needs images/<id>.png|jpg (voice/*.words.json are made on the first run, or by narration.py check), and in project.py:
-  NAME, SCRIPT, SHOTS; optional SAY, NARRATION, TITLE, ENDCARD, MUSIC, CH_MUSIC, MUSIC_DB, MV_CLIP, FONT, SUBS, GAPS
+  NAME, SCRIPT, SHOTS; optional SAY, NARRATION, TITLE, ENDCARD, FACTS, MUSIC, CH_MUSIC, MUSIC_DB, MV_CLIP, FONT, SUBS, GAPS
+FACTS = [("heading", "line\\nline"), ...]: the script's fact check, one card each (FACTS_S seconds, default 2.4: quick,
+pause to read) over the darkened last picture, between the narration and the end card. Full cut only.
 SUBS = dict(style=outline | heavy | gold | band, font=a family in FONT's folder, size=58): the subtitle look the user
 picked from explain/sub_styles.py (default: outline, FONT's family, 58).
 Writes out/NAME.mp4 and out/NAME.<lang>.srt (YouTube indexes uploaded captions for search).
@@ -170,6 +173,11 @@ def build():
             t += (gaps["title"] if title and name == first_head else gaps["chapter"]) if nxt else gaps["part"]
     narr_end = t
     total = narr_end + (3.2 if until else gaps["end"])
+    facts, fact_s = ([] if S or until else list(getattr(proj, "FACTS", []))), getattr(proj, "FACTS_S", 2.4)
+    facts_t0 = narr_end + 1.0
+    if facts:   # the fact cards come before the end card, which keeps its place at the very end
+        total += 1.0 + len(facts) * fact_s
+    end_at = facts_t0 + len(facts) * fact_s + 0.3 if facts else narr_end + 1.3
 
     def when(pi, i):   # seconds into the video of character i of part pi
         k = next(k for k, pc in enumerate(pieces) if pc[0] == pi and pc[1] <= i < pc[2])
@@ -269,7 +277,15 @@ def build():
             ass.append(f"Dialogue: 3,{ass_time(narr_end + 0.5)},{ass_time(total - 0.1)},TitleSub,,0,0,0,,{{\\fad(400,300)"
                        f"\\an5\\fs36\\pos({OW // 2},{y + 90})}}{endcard}")
     elif endcard and not until:
-        ass.append(f"Dialogue: 1,{ass_time(narr_end + 1.3)},{ass_time(total - 0.2)},TitleSub,,0,0,0,,{{\\fad(600,400)\\fs54\\pos(960,1000)}}{endcard}")
+        ass.append(f"Dialogue: 1,{ass_time(end_at)},{ass_time(total - 0.2)},TitleSub,,0,0,0,,{{\\fad(600,400)\\fs54\\pos(960,1000)}}{endcard}")
+    if facts:   # 查證 above, then one card at a time: the heading in gold, the facts under it
+        f_end = facts_t0 + len(facts) * fact_s
+        ass.append(f"Dialogue: 1,{ass_time(facts_t0)},{ass_time(f_end)},TitleSub,,0,0,0,,{{\\fad(300,300)\\fs50\\pos(960,280)}}查證")
+        for k, (head, body) in enumerate(facts):
+            a = facts_t0 + k * fact_s
+            ass.append(f"Dialogue: 2,{ass_time(a)},{ass_time(a + fact_s)},Title,,0,0,0,,{{\\fad(150,150)\\an2\\fs76\\pos(960,500)}}{head}")
+            body = body.replace("\n", "\\N")
+            ass.append(f"Dialogue: 2,{ass_time(a)},{ass_time(a + fact_s)},TitleSub,,0,0,0,,{{\\fad(150,150)\\an8\\fs48\\pos(960,560)}}{body}")
     subp = os.path.join(work, "subs.ass")
     open(subp, "w", encoding="utf-8-sig").write("\n".join(ass) + "\n")
 
@@ -398,7 +414,7 @@ def build():
         bg[pic_y + pic_h + 1:pic_y + pic_h + 3] = GOLD_BGR
         return bg
 
-    card = (S.get("end") if S else endcard) and not until
+    card = ((S.get("end") if S else endcard) or facts) and not until
     esc = lambda p: os.path.abspath(p).replace("\\", "/").replace(":", "\\:")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{OW}x{OH}", "-r", str(FPS),
@@ -417,6 +433,8 @@ def build():
         g = min(1, t / 0.8, (total - t) / 1.2) if not S else min(1, t / 0.25, (total - t) / 0.8)
         if card:
             g *= 1 - 0.6 * min(1, max(0, (t - narr_end - (0.0 if S else 0.8)) / (0.5 if S else 1.0)))   # darken under the end card
+            if facts:   # darker still under the fact cards, easing back for the end card
+                g *= 1 - 0.65 * min(1, max(0, (t - narr_end - 0.8) / 1.0), max(0, (end_at - t) / 0.8))
         enc.stdin.write(np.clip(fr * g, 0, 255).astype(np.uint8).tobytes())
         if f % (FPS * 30) == 0:
             print(f"  {t:.0f}/{total:.0f} s", flush=True)

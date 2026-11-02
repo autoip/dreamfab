@@ -3,6 +3,8 @@
 usage: python explain/narration.py PROJECT_DIR jobs [--max 1100]   jobs/voice_jobs.json: the narration in parts of at most
                                                                   --max characters, split between chapters (the API takes
                                                                   1,200), SAY applied, read in proj.VOICE
+                                                                  (proj.VOICE_FIELDS: more /voice/clone fields, e.g.
+                                                                  voice_engine="voxcpm2", dialect="sichuan")
        python explain/narration.py PROJECT_DIR check [AUDIO ...]  transcribe (cached in voice/*.words.json) and report
                                                                   speed, words to listen to, a missing ending, or a voice
                                                                   that runs on and repeats itself after the text ends
@@ -42,7 +44,7 @@ if cmd == "jobs":
             sys.exit(f"chapter {head!r} is {len(text)} characters: split it (the voice API takes {limit} here)")
         cur.append(text)
     parts.append(cur)
-    jobs = [dict(id=f"part{k + 1}", endpoint="/voice/clone", fields=dict(text=spoken("\n\n".join(p), proj)),
+    jobs = [dict(id=f"part{k + 1}", endpoint="/voice/clone", fields=dict(text=spoken("\n\n".join(p), proj), **getattr(proj, "VOICE_FIELDS", {})),
                  files=dict(reference_audio=P(voice)), out=P(D, "voice", f"part{k + 1}.flac")) for k, p in enumerate(parts)]
     jdump(jobs, os.path.join(D, "jobs", "voice_jobs.json"))
     full = sum(estimate(j) for j in jobs)

@@ -14,8 +14,8 @@ Everything comes from the edit (timeline.resolve) and project.TYPO:
   chat_y / chat_rows         livestream comments: bottom of the stack as a fraction of the height (default 0.66 / 0.8),
                              comments on screen at once (default 5)
 Per character: CAST[k]["color"] colours that speaker's lines, CAST[k]["title"] is the role line of the intro card.
-Row flags used here: intro=KEY, title, label=text, end[=text], chat=NAME, heard (subtitle what speech.py heard, not the
-script line: an NG take that read the stage directions out).
+Row flags used here: intro=KEY, title, label=text, end[=text], chat=NAME, heard[=text] (subtitle what speech.py heard, not
+the script line: an NG take that read the stage directions out; =text when what was heard is too long to show, a laugh).
 chat=NAME: project.CHAT[NAME] = [("user", "comment"), ...] scroll up over that row like a livestream's comments,
 bottom left (keep intro cards off those rows: both sit on the left).
 """
@@ -170,8 +170,12 @@ def build(proj, tl, W, H):
         if not s or not s.get("say"):
             continue
         spk, text = s["say"][0], s["say"][1]
-        if b["flags"].get("heard") and sp.get("heard"):  # an NG take: subtitle what was actually said (the joke)
-            text = re.sub(r"[,;﹐﹑﹔；]+", "，", sp["heard"]).strip("＀ ")  # ASR commas -> full width, so chunks() splits there
+        heard = b["flags"].get("heard")
+        if heard and (isinstance(heard, str) or "heard" in sp):  # an NG take: subtitle what was actually said (the joke)
+            text = heard if isinstance(heard, str) else sp["heard"]
+            text = re.sub(r"[,;﹐﹑﹔；]+", "，", text).strip("＀ ")  # ASR commas -> full width, so chunks() splits there
+            if not text:  # nobody spoke in that take: no line, not the script's
+                continue
         span = sp.get("speech") or [b["inn"], b["inn"] + b["dur"]]
         st, en = char_times(text, sp.get("words") or [], span)
         # a row cut from part of the clip (one line split over two rows) subtitles only the words said in it
