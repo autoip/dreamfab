@@ -12,7 +12,8 @@ usage: python explain/narration.py PROJECT_DIR jobs [--max 1100]   jobs/voice_jo
 Submit with: python dreamfab/aip_runner.py PROJECT_DIR/jobs/voice_jobs.json [--off-peak]
 """
 import os, subprocess, sys
-from common import load_project, P, jload, jdump, estimate, off_peak, chapters, spoken, narration, words_path, transcribe, align, PUNCT
+from common import load_project, P, jload, jdump, estimate, off_peak, chapters, spoken, narration, words_path, transcribe, align, PUNCT, \
+    asr_language
 
 if len(sys.argv) < 3 or sys.argv[2] not in ("jobs", "check", "cut"):
     sys.exit(__doc__)
@@ -59,7 +60,7 @@ elif cmd == "check":
         items = [it for it in items if os.path.abspath(it["audio"]) in want]
     todo = [it["audio"] for it in items if os.path.exists(it["audio"]) and not os.path.exists(words_path(it["audio"]))]
     if todo:
-        transcribe(todo)
+        transcribe(todo, language=asr_language(proj))
     for it in items:
         if not os.path.exists(it["audio"]):
             print(f"{os.path.relpath(it['audio'], D)}: not there yet"); continue

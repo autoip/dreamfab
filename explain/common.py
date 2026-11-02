@@ -18,16 +18,38 @@ from dreamfab.util import load_project, P, jload, jdump, run, venc, estimate, of
 PUNCT = "，。、：；？！「」『』〈〉《》（）—…·,.:;?!()\"' \n"
 
 
-def chapters(proj):
-    """[(heading, text)] of the narration in proj.SCRIPT; paragraphs joined by a blank line."""
+def _narration_md(proj):
     md = open(os.path.join(proj.DIR, getattr(proj, "SCRIPT", "script.md")), encoding="utf-8").read()
     m = re.search(r"^## *(?:旁白|Narration)\b.*$", md, flags=re.M)
     if not m:
         sys.exit(f"{proj.SCRIPT}: no '## Narration' (or '## 旁白') section")
     body = md[m.end():]
-    body = body[:re.search(r"^## ", body, flags=re.M).start()] if re.search(r"^## ", body, flags=re.M) else body
+    return body[:re.search(r"^## ", body, flags=re.M).start()] if re.search(r"^## ", body, flags=re.M) else body
+
+
+def chapters(proj):
+    """[(heading, text)] of the narration in proj.SCRIPT; paragraphs joined by a blank line. Lines starting with ">"
+    are a translation of the line above (bilingual subtitles, see translations()) and are not read."""
+    body = "\n".join(l for l in _narration_md(proj).splitlines() if not l.lstrip().startswith(">"))
     parts = re.split(r"^### *(.+?)\s*$", body, flags=re.M)[1:]
     return [(h, "\n\n".join(p.strip() for p in s.strip().split("\n\n") if p.strip())) for h, s in zip(parts[::2], parts[1::2])]
+
+
+def translations(proj):
+    """{narration line: its translation} from "> " lines right under it. A script that has them gets bilingual
+    subtitles: one subtitle per narration line (keep each short enough for one row), its translation under it."""
+    out, prev = {}, None
+    for l in _narration_md(proj).splitlines():
+        s = l.strip()
+        if s.startswith(">") and prev:
+            out[prev] = s.lstrip(">").strip()
+        prev = s if s and not s.startswith((">", "#")) else None
+    return out
+
+
+def asr_language(proj):
+    """The recogniser's language code for the narration: RENDER["lang"] without its region (zh-TW -> zh, ja -> ja)."""
+    return getattr(proj, "RENDER", {}).get("lang", "zh-TW").split("-")[0]
 
 
 def spoken(text, proj):
@@ -57,13 +79,16 @@ def find_job(proj, jid):
 
 def narration(proj):
     """What render.py plays, in order: [dict(audio, text, stop_at)]. proj.NARRATION lists them when a part was cut
-    or patched; otherwise every /voice/clone job in jobs/voice_jobs.json, in order."""
+    or patched; otherwise every /voice/clone job in jobs/voice_jobs.json, in order. dict(audio=..., sound=True) in
+    NARRATION is a sound played whole between two parts (a voice sample, a line of dialogue), with no subtitles."""
     items = getattr(proj, "NARRATION", None)
     if items is None:
         jobs = [j for j in jload(os.path.join(proj.DIR, "jobs", "voice_jobs.json")) if j["endpoint"] == "/voice/clone"]
         items = [dict(audio=os.path.relpath(j["out"], proj.DIR), job=j["id"]) for j in jobs]
     out = []
     for it in items:
+        if it.get("sound"):
+            out.append(dict(audio=os.path.join(proj.DIR, it["audio"]), text="", sound=True)); continue
         text = it.get("text") or find_job(proj, it["job"])["fields"]["text"]
         if it.get("stop_at"):
             text = text[:text.index(it["stop_at"])].rstrip()
@@ -75,8 +100,8 @@ def words_path(audio):
     return os.path.splitext(audio)[0] + ".words.json"
 
 
-def transcribe(paths, model="medium"):
-    """Word timings from faster-whisper, cached next to each audio file as <name>.words.json."""
+def transcribe(paths, model="medium", language="zh"):
+    """Word timings from faster-whisper, cached next to each audio file as <name>.words.json (language: asr_language)."""
     import numpy as np, site, subprocess
     for d in glob.glob(os.path.join(site.getsitepackages()[-1], "nvidia", "*", "bin")):   # CUDA DLLs on Windows
         os.add_dll_directory(d); os.environ["PATH"] = d + os.pathsep + os.environ["PATH"]
@@ -89,7 +114,7 @@ def transcribe(paths, model="medium"):
         raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "s16le", "-"],
                              capture_output=True, check=True).stdout
         a = np.frombuffer(raw, np.int16).astype(np.float32) / 32768
-        segs, _ = m.transcribe(a, language="zh", word_timestamps=True, condition_on_previous_text=False)
+        segs, _ = m.transcribe(a, language=language, word_timestamps=True, condition_on_previous_text=False)
         words = [(w.word.strip(), round(w.start, 3), round(w.end, 3)) for s in segs for w in s.words if w.word.strip()]
         jdump(dict(duration=len(a) / 16000, words=words), words_path(path))
         print(f"  {os.path.basename(words_path(path))}: {len(words)} words, {len(a) / 16000:.1f} s")
@@ -180,6 +205,8 @@ SUBS = {
                  margin=64, blur=0.5, rim="&H0040A8D8"),
     "band": dict(label="底部柔光暗帶・米白字", fill="&H00E8F4FA", edge="&H60000000", width=1.6, shadow=0, spacing=4,
                  margin=62, band=True),
+    "pop": dict(label="綜藝黃字・粗黑邊・硬陰影", fill="&H004DE1FF", edge="&H00222222", width=5.5, shadow=4, spacing=1,
+                margin=44),
 }
 
 
@@ -189,10 +216,15 @@ def sub_styles(sub):
     k = SUBS[sub["style"]]
     side, margin = sub.get("side", 120), sub.get("margin", k["margin"])
 
-    def style(name, fill, edge, width, shadow):
-        return (f"Style: {name},{sub['font']},{sub['size']},{fill},&H000000FF,{edge},&H90000000,0,0,0,0,100,100,"
+    bold = -1 if sub.get("bold") else 0
+
+    def style(name, fill, edge, width, shadow, font=sub["font"], size=sub["size"]):
+        return (f"Style: {name},{font},{size},{fill},&H000000FF,{edge},&H90000000,{bold},0,0,0,100,100,"
                 f"{k['spacing']},0,1,{width},{shadow},2,{side},{side},{margin},1")
-    out = [style("Sub", k["fill"], k["edge"], k["width"], k["shadow"])]
+    out = [style("Sub", k["fill"], k["edge"], k["width"], k["shadow"]),
+           # the translation under each line (bilingual subtitles): pale gold, smaller, in its own font if given
+           style("Tr", sub.get("fill2", "&H00B4DCF0"), k["edge"], k["width"] * 0.8, k["shadow"],
+                 sub.get("font2", sub["font"]), sub.get("size2", round(sub["size"] * 0.72)))]
     if k.get("rim"):
         out.append(style("Rim", k["rim"], k["rim"], k["width"] + 3, 2.6))
     if k.get("band"):

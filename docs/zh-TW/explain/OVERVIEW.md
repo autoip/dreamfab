@@ -90,6 +90,22 @@ projects/<系列>/
    - 上傳後在 Studio 的「相關影片」連到這集長片（只有 Shorts 有這一欄），記一筆 `youtube_log.py add SHORT link "相關影片 → 長片 ID"`。Shorts 不放進長片的播放清單。
 10. **資源庫**：`python dreamfab/library.py serve projects` 之後，解說系列在 `http://127.0.0.1:8765/files/<系列>/`。每集一張卡片，標出做到哪一步；點進一集看成片和章節、封面、每張畫面和說明、旁白、文案、說明欄。加 `?raw` 看原始檔案清單。
 
+## 外語、雙語字幕、影片片段與綜藝包裝
+
+這些都是選用的，不寫就跟上面一樣。廣告線（[ad/](../ad/OVERVIEW.md)）也用同一個合成程式。
+
+- **外語旁白**：`RENDER = {"lang": "ja"}`（`ko`、`en`……），語音辨識和字幕檔都跟著換語言。旁白用語音 v3：`VOICE_FIELDS = dict(voice_engine="voxcpm2")`，文案直接寫那個語言。
+- **雙語字幕**：文案每一行底下加一行 `> 譯文`，例如日文一行、下一行 `> 中文`。這時一行文案＝一句字幕（一列放得下，約 26 字內），譯文用小一號的字排在下面（`SUBS` 的 `font2`、`size2`、`fill2`），另外多出一個 `RENDER["lang2"]`（預設 `zh-TW`）的 `.srt`。`>` 開頭的行不會唸出來。
+- **影片片段當畫面**：`CLIPS = {"代號": "路徑.mp4"}`，`SHOTS` 寫 `("代號:3.0", "從哪幾個字", "", None)` 就從第 3 秒開始播，鋪滿畫面；直式影片會放在中間、兩邊是模糊的同一段。運鏡寫 `frame` 就改放金框裡。片段本身的聲音不用。
+- **插一段原音**：`NARRATION` 裡放 `dict(audio="voice/taiyu.wav", sound=True)`，在兩段旁白中間整段播出，沒有字幕。例如講到「也會說台語」時接一句真的台語。旁白要先在那句之後切成兩個檔。
+- **配樂一路放**：沒寫 `CH_MUSIC` 時，配樂從頭一路放到尾，不分章跳段，適合專門為這支做的曲子。
+- **綜藝包裝**：
+  - `CARD = dict(colors=("#ffe14d", "#ff7eb3", "#7ad7ff"), tilt=-1.5)`：每個畫面放在歪斜的白框裡，有硬陰影，底是三色漸層。Shorts 不套白框，畫面保持最大。
+  - `SUBS = dict(style="pop", ...)`：黃字、粗黑邊、硬陰影。
+  - `STICKERS = [dict(at="哪幾個字", text="실화?!", x=360, y=160, rot=8, color="#ffe14d", sfx="sfx/pop.wav")]`：貼紙字卡在那幾個字出現時彈出，彩色底、黑框，可以配音效。`x`、`y` 是 16:9 畫面上的座標，Shorts 會自動換算。字型用 `STICKER_FONT`。
+  - `LABELS = dict(chap=(字色, 邊色), title=(字色, 邊色))`：改章名和片名的顏色（ASS 的 `&HBBGGRR`）。
+- 字幕的前後兩句不會重疊。重疊時 libass 會把後一句往上推一行，而且整句都停在那裡。舊版有 0.03 秒的重疊，已經修正，重出就好。
+
 ## project.py
 
 | 欄位 | 意思 |
@@ -103,13 +119,15 @@ projects/<系列>/
 | `TITLE`、`ENDCARD` | 開場後的片名（主標、副標）；最後的 AI 生成字卡 |
 | `FACTS` | 選用：文案的查證，旁白講完後一張一張快速帶過（`[("標題", "第一行\n第二行"), ...]`，每張 `FACTS_S` 秒，預設 2.4），畫面壓暗，AI 生成字卡照樣放最後；只在長片 |
 | `FONT` | （字型家族名, 資料夾）：`python dreamfab/make_static_font.py NotoSerifTC-VF.ttf 600 "Explainer Serif" fonts/ExplainerSerif.ttf` |
-| `SUBS` | 字幕樣式：`dict(style=..., font=字型家族名, size=58)`，使用者從 `sub_styles.py` 的對照圖選（見步驟 6）。`style`：`outline` 白字細黑邊（預設）、`heavy` 米白字深棕粗邊、`gold` 再加細金框、`band` 底部柔光暗帶。字型檔放在 `FONT` 那個資料夾 |
+| `SUBS` | 字幕樣式：`dict(style=..., font=字型家族名, size=58)`，使用者從 `sub_styles.py` 的對照圖選（見步驟 6）。`style`：`outline` 白字細黑邊（預設）、`heavy` 米白字深棕粗邊、`gold` 再加細金框、`band` 底部柔光暗帶、`pop` 綜藝黃字粗黑邊。字型檔放在 `FONT` 那個資料夾；雙語字幕的譯文用 `font2`、`size2`、`fill2` |
 | `MUSIC`、`MUSIC_DB`、`CH_MUSIC` | 伴奏、每段的音量、每章從第幾秒開始 |
 | `MV_CLIP` | `"MV:秒"` 畫面用的影片 |
 | `GAPS` | 片頭、章節間、片名、段落間、片尾、交叉淡化的秒數 |
 | `LOOKS`、`NEG`、`IMAGES`、`IMAGE_FIELDS` | 生圖（見步驟 4） |
 | `SHOTS` | 時間軸（見步驟 6） |
 | `SHORTS` | 直版的片段、上方標題、結尾字、版面，每集都寫（見步驟 9）；`EDITS` 加 `"shorts": {"suffix": "_shorts"}` |
+| `CLIPS` | 選用：影片片段，`SHOTS` 用 `"代號:秒"`（見「外語、雙語字幕……」） |
+| `CARD`、`STICKERS`、`STICKER_FONT`、`LABELS` | 選用：綜藝包裝（同上） |
 
 ## 學到的事
 

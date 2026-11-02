@@ -95,6 +95,22 @@ Every batch that costs credits is quoted at full and off-peak price first and wa
    - After the upload, set the episode as the Short's "Related video" in Studio (a Shorts-only field) and log it: `youtube_log.py add SHORT link "related video -> EPISODE_ID"`. Shorts stay out of the episodes' playlist.
 10. **Library**: after `python dreamfab/library.py serve projects`, an explainer series is at `http://127.0.0.1:8765/files/<series>/`: one card per episode showing how far it is along, and an episode page with the cut and its chapters, the covers, every picture with its note, the narration, the script and the YouTube copy. Add `?raw` for the plain file listing.
 
+## Other languages, bilingual subtitles, video clips and a variety-show look
+
+All optional; without them an episode is made as above. The ad line ([ad/](../ad/OVERVIEW.md)) renders with the same program.
+
+- **Narration in another language**: `RENDER = {"lang": "ja"}` (`ko`, `en`, ...) switches the speech recognition and the subtitle file. Read it with voice v3, `VOICE_FIELDS = dict(voice_engine="voxcpm2")`, from a script written in that language.
+- **Bilingual subtitles**: put `> translation` on the line under each script line (say a Japanese line, then `> Chinese`). Then one script line is one subtitle (keep it to one row, about 26 characters) with its translation under it in a smaller face (`SUBS` `font2`, `size2`, `fill2`), and a second `.srt` in `RENDER["lang2"]` (default `zh-TW`) is written. Lines starting with `>` are not read aloud.
+- **Video clips as pictures**: `CLIPS = {"key": "path.mp4"}`; `("key:3.0", "first words", "", None)` in `SHOTS` plays it from 3.0 s across the whole picture (a vertical clip stands in the middle on a blurred copy of itself; move `frame` puts it in the gold frame). The clip's own sound is not used.
+- **A sound between two parts**: `dict(audio="voice/taiyu.wav", sound=True)` in `NARRATION` plays the file whole between the parts around it, with no subtitles (say, a real line of Taiwanese right after "it speaks Taiwanese too"). Cut the narration in two at that sentence first.
+- **Music straight through**: without `CH_MUSIC` the music plays from the top to the end, no sections per chapter: for a piece made for this video.
+- **A variety-show look**:
+  - `CARD = dict(colors=("#ffe14d", "#ff7eb3", "#7ad7ff"), tilt=-1.5)`: every picture on a tilted white card with a hard shadow over a three-colour gradient. A Short keeps the picture full size, without the card.
+  - `SUBS = dict(style="pop", ...)`: yellow letters, a thick dark edge and a hard shadow.
+  - `STICKERS = [dict(at="first words", text="Really?!", x=360, y=160, rot=8, color="#ffe14d", sfx="sfx/pop.wav")]`: a word on a coloured box with a dark outline pops up when the narration reaches the words, with a sound if given. `x`, `y` are on the 16:9 picture (a Short maps them); the font is `STICKER_FONT`.
+  - `LABELS = dict(chap=(fill, edge), title=(fill, edge))`: the colours of the chapter labels and the title (ASS `&HBBGGRR`).
+- Two subtitles never overlap now: when they did (by 0.03 s), libass lifted the second a whole line for all of its time. Render again to fix an old cut.
+
 ## project.py
 
 | Field | Meaning |
@@ -108,13 +124,15 @@ Every batch that costs credits is quoted at full and off-peak price first and wa
 | `TITLE`, `ENDCARD` | the title after the opening (title, subtitle); the closing AI-made card |
 | `FACTS` | optional: the script's fact check, one quick card each after the narration (`[("heading", "line\nline"), ...]`, `FACTS_S` seconds each, default 2.4) over the darkened picture, before the AI-made card; full cut only |
 | `FONT` | (font family, folder): `python dreamfab/make_static_font.py NotoSerifTC-VF.ttf 600 "Explainer Serif" fonts/ExplainerSerif.ttf` |
-| `SUBS` | the subtitle look: `dict(style=..., font=family, size=58)`, picked by the user from `sub_styles.py`'s sheet (step 6). `style`: `outline` white with a thin dark edge (default), `heavy` ivory with a thick dark-brown edge, `gold` that plus a thin gold rim, `band` a soft dark strip along the bottom. The font file goes in `FONT`'s folder |
+| `SUBS` | the subtitle look: `dict(style=..., font=family, size=58)`, picked by the user from `sub_styles.py`'s sheet (step 6). `style`: `outline` white with a thin dark edge (default), `heavy` ivory with a thick dark-brown edge, `gold` that plus a thin gold rim, `band` a soft dark strip along the bottom, `pop` variety-show yellow with a thick dark edge. The font file goes in `FONT`'s folder; a bilingual script's translation uses `font2`, `size2`, `fill2` |
 | `MUSIC`, `MUSIC_DB`, `CH_MUSIC` | the instrumental, each section's level, each chapter's start second |
 | `MV_CLIP` | the video `"MV:<second>"` shots play |
 | `GAPS` | seconds of lead-in, between chapters, for the title, between parts, at the end, and of cross-fades |
 | `LOOKS`, `NEG`, `IMAGES`, `IMAGE_FIELDS` | pictures (step 4) |
 | `SHOTS` | the timeline (step 6) |
 | `SHORTS` | the vertical Short's clips, head line, closing line and layout, in every episode (step 9); add `"shorts": {"suffix": "_shorts"}` to `EDITS` |
+| `CLIPS` | optional: video clips, `"key:second"` in `SHOTS` (see "Other languages...") |
+| `CARD`, `STICKERS`, `STICKER_FONT`, `LABELS` | optional: the variety-show look (same section) |
 
 ## Lessons
 
