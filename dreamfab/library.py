@@ -33,6 +33,8 @@ def line_of(series):
         src = open(p, encoding="utf-8", errors="replace").read() if os.path.isfile(p) else ""
         if re.search(r"^LINE\s*=\s*[\"']explain", src, re.M):
             return "explain"
+        if re.search(r"^LINE\s*=\s*[\"']ad", src, re.M):   # an ad campaign (ad/): served as plain files too
+            return "ad"
         if re.search(r"^AUDIO\s*=", src, re.M):
             return "mv"
     return "drama"
@@ -138,8 +140,9 @@ pre{white-space:pre-wrap;font:inherit;margin:8px 0 0}.tag{display:inline-block;f
 
 def serve(roots, port):
     found = find_series(roots)
-    series = [s for s in found if s[2] != "explain"]
+    series = [s for s in found if s[2] not in ("explain", "ad")]
     explain = {os.path.normcase(p) for _, p, l in found if l == "explain"}
+    ads = {os.path.normcase(p) for _, p, l in found if l == "ad"}
     if not series:
         sys.exit("no series found (a series is a folder whose sub-folders have a project.py)")
     others = other_folders(roots, series)
@@ -160,7 +163,8 @@ def serve(roots, port):
 
     def front():
         return home.page(series, [(n, p) for n, p in others if os.path.normcase(p) in explain],
-                         [(n, p) for n, p in others if os.path.normcase(p) not in explain], files_url)
+                         [(n, p) for n, p in others if os.path.normcase(p) not in explain | ads], files_url,
+                         ads=[(n, p) for n, p in others if os.path.normcase(p) in ads])
 
     def page(title, body):
         return (f'<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" '

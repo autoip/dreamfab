@@ -207,6 +207,8 @@ SUBS = {
                  margin=62, band=True),
     "pop": dict(label="綜藝黃字・粗黑邊・硬陰影", fill="&H004DE1FF", edge="&H00222222", width=5.5, shadow=4, spacing=1,
                 margin=44),
+    "box": dict(label="白底方框・深色字（發表會）", fill="&H00111111", edge="&H00FFFFFF", width=14, shadow=0, spacing=1,
+                margin=56, box=True),
 }
 
 
@@ -220,7 +222,7 @@ def sub_styles(sub):
 
     def style(name, fill, edge, width, shadow, font=sub["font"], size=sub["size"]):
         return (f"Style: {name},{font},{size},{fill},&H000000FF,{edge},&H90000000,{bold},0,0,0,100,100,"
-                f"{k['spacing']},0,1,{width},{shadow},2,{side},{side},{margin},1")
+                f"{k['spacing']},0,{3 if k.get('box') else 1},{width},{shadow},2,{side},{side},{margin},1")
     out = [style("Sub", k["fill"], k["edge"], k["width"], k["shadow"]),
            # the translation under each line (bilingual subtitles): pale gold, smaller, in its own font if given
            style("Tr", sub.get("fill2", "&H00B4DCF0"), k["edge"], k["width"] * 0.8, k["shadow"],

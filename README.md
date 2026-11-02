@@ -10,13 +10,14 @@ Dreamfab 是讓 AI Agent（Claude Code、Codex，也實測過 Grok Bot）自動�
 - **生成引擎**：畫面、影片、聲音、對嘴目前接 [AutoIP](https://autoip.ai) 公開 API（文生圖、圖生影片、多參考影片、對嘴、語音克隆、AI 作曲），之後接更多引擎。
 - **共用核心** `dreamfab/`：送任務、算點數、離峰半價、本機剪輯合成、GPU 超分補幀、資源庫網頁、YouTube 上架（[共用核心與資源庫](docs/zh-TW/CORE.md)）。
 
-## 產線：戲・曲・說・影・聞
+## 產線：戲・曲・說・廣・影・聞
 
 | 線 | 跟 agent 說一句話 | 狀態 | 文件 |
 |---|---|---|---|
 | **戲**：短劇 `drama/` | 用 dreamfab-drama 把 劇本.md 做成短劇 | 可用 | [短劇總覽](docs/zh-TW/drama/OVERVIEW.md) |
 | **曲**：MV `mv/` | 用 dreamfab-mv 把 song.mp3 做成 MV | 可用 | [MV 總覽](docs/zh-TW/mv/OVERVIEW.md) |
 | **說**：解說影片 `explain/` | 用 dreamfab-explain 把 MV《洛川》背後的歷史做成 5 分鐘解說 | 可用（靜態 B-roll；動態規劃中） | [解說總覽](docs/zh-TW/explain/OVERVIEW.md) |
+| **廣**：廣告 `ad/` | 用 dreamfab-ad 把我的產品做成日、韓、英三國廣告，每國一種風格 | 可用（實體商品、服務、品牌；主版＋30／15 秒，16:9、9:16、1:1） | [廣告總覽](docs/zh-TW/ad/OVERVIEW.md) |
 | **影**、**聞**：電影、新聞 | — | 之後 | — |
 
 每個系列是一個世界（`projects/<系列>/`），演員和聲音（`cast/`、`voices/`）跨集、跨季重複演出，臉和聲音不會跑掉。

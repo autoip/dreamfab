@@ -5,6 +5,7 @@ and an AI-made end card. No credits.
 
 usage: python explain/render.py PROJECT_DIR [--until TEXT] [--out out/NAME.mp4] [--full-only]
        python explain/render.py PROJECT_DIR --shorts [--layout band|square] [--out out/NAME_shorts.mp4]
+       python explain/render.py PROJECT_DIR --cut NAME [--out out/NAME_<name>.mp4]
   --until TEXT   stop before this sentence (a short test cut); the title and a few seconds of music close it
   (a project with SHORTS gets both cuts from one command: the 16:9 episode, then its vertical Short; the
    workflow switch explain.shorts turns that off (dreamfab/workflow.py), --full-only skips it once)
@@ -15,6 +16,10 @@ usage: python explain/render.py PROJECT_DIR [--until TEXT] [--out out/NAME.mp4] 
                  (not including) the second (None: to the end of that part); keep the sum under 60 s (YouTube takes up
                  to 3 minutes, but a Short over 1 minute with any copyright claim is blocked everywhere). head stays at
                  the top, the pictures sit in the middle, subtitles below them, the end line over the last seconds.
+  --cut NAME     a shorter cut from CUTS[NAME] = dict(clips=[...], aspect="16:9" | "9:16" | "1:1", head=(...), end="...")
+                 (an ad's 30 s and 15 s versions): clips as for SHORTS; 16:9 keeps the full cut's look, 9:16 and 1:1
+                 set the picture across the middle (1:1: band layout, head line smaller). The full render makes every
+                 cut in CUTS after the Short (--full-only skips them).
   --layout       band: the whole 16:9 picture across the middle on a blurred copy of itself (default);
                  square: a 1:1 cut from the middle of each picture, larger on the phone (keep head to one line).
                  Render both (--layout ... --out ...) and let the user choose before setting SHORTS["layout"]
@@ -39,6 +44,7 @@ shadow=14, top=36) sets every picture on a tilted white card over a gradient; ST
 x=, y=, rot=, color="#rrggbb", ink="#rrggbb", size=64, dur=2.6, sfx="sfx/pop.wav", sfx_db=-6)] pop a word on a coloured
 box (and play its sound) where the narration reaches the phrase, x and y on the 16:9 picture (STICKER_FONT: its font);
 LABELS = dict(chap=(fill, edge), title=(fill, edge)) recolours the chapter labels and the title (ASS &HBBGGRR colours).
+A film look: FILM = dict(bars=130, warm=0.08, vignette=0.35) adds black bars (wide cuts only), a warm grade and a vignette.
 """
 import os, subprocess, sys
 import numpy as np
@@ -97,9 +103,16 @@ def build():
     S = getattr(proj, "SHORTS", None) if "--shorts" in args else None
     if "--shorts" in args and not S:
         sys.exit("--shorts needs SHORTS = dict(clips=[...], ...) in project.py")
-    suffix = getattr(proj, "EDITS", {}).get("shorts", {}).get("suffix", "_shorts") if S else ""
+    cut = args[args.index("--cut") + 1] if "--cut" in args else None
+    if cut:
+        if cut not in getattr(proj, "CUTS", {}):
+            sys.exit(f"--cut {cut}: no CUTS[{cut!r}] in project.py")
+        S = proj.CUTS[cut]
+    aspect = S.get("aspect", "9:16") if S else "16:9"
+    vert = aspect != "16:9"   # the picture is set across the middle of a taller frame (a Short, a square cut)
+    suffix = f"_{cut}" if cut else getattr(proj, "EDITS", {}).get("shorts", {}).get("suffix", "_shorts") if S else ""
     out = os.path.join(D, args[args.index("--out") + 1] if "--out" in args else f"out/{proj.NAME}{suffix}.mp4")
-    work = os.path.join(D, "out", "_work_shorts" if S else "_work"); os.makedirs(work, exist_ok=True)
+    work = os.path.join(D, "out", f"_work_{cut}" if cut else "_work_shorts" if S else "_work"); os.makedirs(work, exist_ok=True)
     gaps = dict(dict(lead=1.6, chapter=1.4, title=3.4, part=0.4, end=5.5, xfade=0.9), **getattr(proj, "GAPS", {}))
     if S:   # a Short starts on the first word, cuts tight and ends on its closing line
         gaps.update(lead=0.3, part=0.45, end=3.0, xfade=0.6)
@@ -109,18 +122,21 @@ def build():
     fonts = next((p for p in (os.path.join(D, fonts), os.path.join(D, "..", fonts)) if os.path.isdir(p)), os.path.join(D, fonts))
     lang = getattr(proj, "RENDER", {}).get("lang", "zh-TW")
     sub = dict(dict(style="outline", font=font, size=58), **getattr(proj, "SUBS", {}))
-    OW, OH = (1080, 1920) if S else (W, H)   # the output; pictures are still drawn 16:9 (W x H) and set into it
-    if S:
+    OW, OH = {"9:16": (1080, 1920), "1:1": (1080, 1080)}.get(aspect, (W, H))   # pictures are drawn 16:9 and set into it
+    layout, pic_y, pic_h = "band", 0, H
+    if vert:
         layout = args[args.index("--layout") + 1] if "--layout" in args else \
             S.get("layout") or workflow("explain.shorts_layout", D)
         if layout not in ("band", "square"):
             sys.exit("--layout is band or square")
+        if aspect == "1:1":
+            layout = "band"
         pic_h = OW if layout == "square" else OW * H // W        # the picture across the middle of the phone
-        pic_y = 380 if layout == "square" else 520
+        pic_y = 150 if aspect == "1:1" else 380 if layout == "square" else 520
         # subtitles under the picture (band) or over its lower edge (square), above the Shorts title and buttons that
         # cover the bottom fifth of the screen; heavy edges keep them readable on either
-        sub = dict(sub, style="pop" if sub["style"] == "pop" else "heavy", size=S.get("sub_size", 68), side=70,
-                   margin=OH - (1430 if layout == "square" else 1330))
+        sub = dict(sub, style="pop" if sub["style"] == "pop" else "heavy", size=S.get("sub_size", 68 if aspect == "9:16" else 54),
+                   side=70, margin=max(40, OH - (1430 if layout == "square" else 1330)))
 
     # narration: each part's spoken text -> subtitle text and a time for every character; cut into one piece per
     # chapter and laid on the timeline with a breath between chapters (and the title after the first one)
@@ -218,7 +234,7 @@ def build():
         return out
     if S:   # each clip on its own, in lines narrow enough for a phone
         for pi, a, b, *_ in pieces:
-            for x, y, shown, t2 in units(parts[pi]["text"], a, b, 12):
+            for x, y, shown, t2 in units(parts[pi]["text"], a, b, 12 if vert else 20):
                 ts = [when(pi, i) for i in range(x, y) if parts[pi]["ct"][i]]
                 subs.append((ts[0][0], ts[-1][1], shown, t2))
     for pi, p in enumerate(parts if not S else []):
@@ -301,7 +317,7 @@ def build():
     bgr = lambda c: f"&H{c[5:7]}{c[3:5]}{c[1:3]}&".upper()   # "#rrggbb" -> an ASS colour override
     for t0, st in stickers:   # coordinates are on the 16:9 picture; a Short maps them onto its picture
         x, y, size = st.get("x", 960), st.get("y", 200), st.get("size", 84)
-        if S:
+        if vert:
             k = pic_h / H
             x = (x - (W - H) / 2) * OW / H if layout == "square" else x * OW / W
             y, size = pic_y + y * k, size * k * 1.25
@@ -312,7 +328,7 @@ def build():
         b = round(16 * size / 64)   # the box's padding grows with the letters; a dark box 5 px larger behind it is the outline
         ass.append(f"Dialogue: 3,{at}\\bord{b + 5}\\3c&H222222&\\1c&H222222&{pop}}}{st['text']}")
         ass.append(f"Dialogue: 4,{at}\\bord{b}\\shad0\\3c{bgr(col)}\\1c{bgr(ink)}{pop}}}{st['text']}")
-    if S:   # a line too wide for the phone breaks in two, at a comma near its middle if there is one
+    if vert:   # a line too wide for the phone breaks in two, at a comma near its middle if there is one
         def fit(s, n=13):
             """Latin letters and spaces count about half a character. Break after a comma, else at a space (Korean),
             else anywhere but inside a word in Latin letters."""
@@ -327,12 +343,13 @@ def build():
                       or [k for k in range(2, len(s) - 1) if not (word(s[k - 1]) and word(s[k]))], key=at)
             return s[:cut].rstrip() + "\\N" + s[cut:].lstrip()
         # bilingual lines run to three or four rows: hang them from just under the picture so they grow downwards
-        hang = f"{{\\an8\\pos({OW // 2},{pic_y + pic_h + 36})}}" if tr else ""
+        hang = f"{{\\an8\\pos({OW // 2},{pic_y + pic_h + 36})}}" if tr or aspect == "1:1" else ""
         ass += sub_events(sub, [(a, b, hang + both(fit(s), t2 and fit(t2, 16))) for a, b, s, t2 in subs], OW, OH)
         head = "\\N".join(S.get("head", title or ()))
         if head:
-            ass.append(f"Dialogue: 1,{ass_time(0)},{ass_time(total)},Head,,0,0,0,,{{\\fad(300,600)\\an8\\pos({OW // 2},"
-                       f"{230 if layout == 'square' else 250})}}{head}")
+            hy, hs = (24, "\\fs52") if aspect == "1:1" else (230 if layout == "square" else 250, "")
+            ass.append(f"Dialogue: 1,{ass_time(0)},{ass_time(total)},Head,,0,0,0,,{{\\fad(300,600)\\an8{hs}\\pos({OW // 2},"
+                       f"{hy})}}{head}")
     else:
         ass += sub_events(sub, [(a, b, both(s, t2)) for a, b, s, t2 in subs], W, H)
     for t0, name in chaps:
@@ -420,7 +437,7 @@ def build():
     def framed(f):
         """A frame inside a gold border (room for subtitles below) on a blurred, darkened copy of itself. A Short sets
         every picture into its own frame (vertical below), so a cover or the MV fills it there."""
-        if S:
+        if vert:
             return f
         bg = cv2.GaussianBlur(cv2.resize(f, (W // 8, H // 8)), (0, 0), 3)
         bg = (cv2.resize(bg, (W, H)).astype(np.float32) * 0.35).astype(np.uint8)
@@ -525,6 +542,11 @@ def build():
             c = np.full((chh + 2 * bd, cw + 2 * bd, 3), 255, np.float32)
             c[bd:bd + chh, bd:bd + cw] = cv2.resize(fr, (cw, chh), interpolation=cv2.INTER_AREA)
             return base * (1 - mask) + cv2.warpAffine(c, M, (W, H), flags=cv2.INTER_LINEAR) * mask
+    film = getattr(proj, "FILM", None)
+    if film:   # FILM: a cinema look: black bars (2.35:1 at bars=130), a warm grade and a vignette
+        bars, w = film.get("bars", 130), film.get("warm", 0.08)
+        v = 1 - film.get("vignette", 0.35) * (((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2) / 2
+        grade = (v[..., None] * np.array([1 - w, 1, 1 + w * 0.6], np.float32)).astype(np.float32)   # BGR
     card = ((S.get("end") if S else endcard) or facts) and not until
     esc = lambda p: os.path.abspath(p).replace("\\", "/").replace(":", "\\:")
     os.makedirs(os.path.dirname(out), exist_ok=True)
@@ -539,9 +561,13 @@ def build():
         if len(live) > 1:
             a = min(1, max(0, (t - spans[live[1]][0]) / max(xf[live[1]], 1e-3)))
             fr = fr * (1 - a) + view(live[1], t).astype(np.float32) * a
-        if look and not S:   # a Short keeps the picture as large as the phone allows
+        if look and not vert:   # a Short keeps the picture as large as the phone allows
             fr = on_card(fr)
-        if S:
+        if film:
+            fr = fr * grade
+            if bars and not vert:
+                fr[:bars] = 0; fr[H - bars:] = 0
+        if vert:
             fr = vertical(fr)
         g = min(1, t / 0.8, (total - t) / 1.2) if not S else min(1, t / 0.25, (total - t) / 0.8)
         if card:
@@ -566,7 +592,13 @@ def build():
 if __name__ == "__main__":
     build()
     a = sys.argv[2:]
-    if not any(x in a for x in ("--shorts", "--until", "--out", "--full-only")) \
-            and getattr(load_project(sys.argv[1]), "SHORTS", None) and workflow("explain.shorts", sys.argv[1]):
-        sys.argv.append("--shorts")
-        build()
+    if not any(x in a for x in ("--shorts", "--cut", "--until", "--out", "--full-only")):
+        proj = load_project(sys.argv[1])
+        if getattr(proj, "SHORTS", None) and workflow("explain.shorts", sys.argv[1]):
+            sys.argv.append("--shorts")
+            build()
+            sys.argv.pop()
+        for name in getattr(proj, "CUTS", {}):   # an ad's shorter versions
+            sys.argv += ["--cut", name]
+            build()
+            del sys.argv[-2:]

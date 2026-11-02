@@ -27,25 +27,26 @@ LINES = (   # key, plate, name, stations, how to start one
     ("drama", "戲", "短劇", ("劇本", "分鏡", "生成", "剪輯", "封面"), "用 dreamfab-drama 把 劇本.md 做成短劇"),
     ("mv", "曲", "MV", ("歌曲", "分鏡", "生成", "剪輯", "封面"), "用 dreamfab-mv 把 song.mp3 做成 MV"),
     ("explain", "說", "解說", ("文案", "旁白", "畫面", "剪輯", "封面"), "用 dreamfab-explain 把一支 MV 背後的歷史做成解說"),
+    ("ad", "廣", "廣告", ("簡報", "文案", "旁白", "畫面", "剪輯"), "用 dreamfab-ad 把產品做成多國語言的廣告"),
 )
 SOON = (("影", "電影"), ("聞", "新聞"))
-RACK = {"drama": "A", "mv": "B", "explain": "C"}   # rack codes, one letter per line
+RACK = {"drama": "A", "mv": "B", "explain": "C", "ad": "D"}   # rack codes, one letter per line
 TALL = {"drama"}                                    # lines whose covers are vertical (9:16)
 
 CSS = """
 :root{--bg:#f4f2ee;--card:#fff;--ink:#1d1b19;--sub:#6b6560;--line:#e2ddd6;--accent:#b3202f;--chip:#efe9e1;
 --ok:#2f7d4f;--ok-bg:#e3f1e8;--doing:#9a6412;--doing-bg:#f8ecd6;--grid:rgba(60,50,40,.06);
---rack:#cdbfac;--track:#5b5650;--roll:#86807a;--drama:#b3202f;--mv:#2c5f8d;--explain:#9a6b12;--on:#fff}
+--rack:#cdbfac;--track:#5b5650;--roll:#86807a;--drama:#b3202f;--mv:#2c5f8d;--explain:#9a6b12;--ad:#2f7d6b;--on:#fff}
 @media (prefers-color-scheme:dark){:root{--bg:#121110;--card:#1d1b1a;--ink:#ece8e3;--sub:#a59e97;--line:#34302d;
 --accent:#e2505d;--chip:#2a2725;--ok:#7cc79a;--ok-bg:#1f3328;--doing:#e2b45e;--doing-bg:#3a2e1a;--grid:rgba(255,255,255,.04);
---rack:#4d453d;--track:#3a3632;--roll:#5c5650;--drama:#e2505d;--mv:#6aa5d8;--explain:#e0b45a;--on:#161412}}
+--rack:#4d453d;--track:#3a3632;--roll:#5c5650;--drama:#e2505d;--mv:#6aa5d8;--explain:#e0b45a;--ad:#6cc7ae;--on:#161412}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,"Microsoft JhengHei","PingFang TC",sans-serif}
 a{color:var(--accent)}
 header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:16px;align-items:center}
 header b{color:var(--accent)}header nav{margin-left:auto;display:flex;gap:14px}header nav a{color:var(--ink);text-decoration:none}
 main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
 .sub{color:var(--sub);font-size:14px}
-.l-drama{--lc:var(--drama)}.l-mv{--lc:var(--mv)}.l-explain{--lc:var(--explain)}
+.l-drama{--lc:var(--drama)}.l-mv{--lc:var(--mv)}.l-explain{--lc:var(--explain)}.l-ad{--lc:var(--ad)}
 .hero{border:1px solid var(--line);border-radius:16px;padding:22px 20px 20px;background-color:var(--card);
 background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
 .hero h1{margin:0;font-size:28px;letter-spacing:.02em}.hero p{margin:4px 0 0}
@@ -216,6 +217,29 @@ def explain(path, base):
     return out
 
 
+def ad(path, base):
+    """An ad campaign: one item per market version (a folder whose project.py says LINE = "ad"), stations 簡報 (the
+    campaign's brief.md), 文案, 旁白, 畫面 (its cards or pictures), 剪輯 (out/NAME.mp4). base: its /files/ address."""
+    out = []
+    for d in sorted(os.listdir(path)):
+        p = os.path.join(path, d)
+        src = open(os.path.join(p, "project.py"), encoding="utf-8", errors="replace").read() \
+            if os.path.isfile(os.path.join(p, "project.py")) else ""
+        if not re.search(r"^LINE\s*=\s*[\"']ad", src, re.M):
+            continue
+        get = lambda k, dflt="": (re.search(rf"^{k}\s*=\s*[\"']([^\"']+)", src, re.M) or [None, dflt])[1]
+        name, script = get("NAME", d), get("SCRIPT", "script.md")
+        imgs = sorted(f for f in os.listdir(os.path.join(p, "images")) if f.endswith((".png", ".jpg"))) \
+            if os.path.isdir(os.path.join(p, "images")) else []
+        voice = os.path.isdir(os.path.join(p, "voice")) and any(f.endswith((".flac", ".wav")) for f in os.listdir(os.path.join(p, "voice")))
+        cut = os.path.join(p, "out", name + ".mp4")
+        pic = os.path.join(p, "images", "hero.png") if "hero.png" in imgs else os.path.join(p, "images", imgs[0]) if imgs else None
+        out.append(item("每個市場", (d,), d, f"{d}（{get('STYLE', '?')}）", base + Q(d) + "/", pic,
+                        [os.path.exists(os.path.join(path, "brief.md")), os.path.exists(os.path.join(p, script)), voice,
+                         bool(imgs), os.path.exists(cut)]))
+    return out
+
+
 def shorts_waiting(line, path):
     """Shorts cut but not uploaded: an episode folder with an out/*shorts*.mp4 and no shorts id in its youtube.json
     (explainers and MVs; a drama episode is its own short)."""
@@ -237,7 +261,7 @@ def shorts_waiting(line, path):
 def stock_panel(racks, paths):
     """庫存與出貨: made but not uploaded (from the racks), uploaded but not public and public (the YouTube log as sync
     last saw it), and per channel the last week's output against the daily cap."""
-    names = {"drama": "短劇", "mv": "MV", "explain": "解說"}
+    names = {"drama": "短劇", "mv": "MV", "explain": "解說", "ad": "廣告"}
     rows = {n: {"made": [0, 0], "private": [0, 0], "public": [0, 0]} for n in names.values()}   # [長片 or 短劇, Shorts]
     for line, name, href, items in racks:
         r = rows.get(names.get(line))
@@ -291,14 +315,15 @@ def hours(sec):
     return f"{m // 60} 小時 {m % 60} 分" if m >= 60 else f"{m} 分"
 
 
-def page(series, explainers, loose, files_url):
-    """series: [(name, path, line)] that their own libraries serve at /u/<name>/; explainers and loose: [(name, path)]
-    served as files; files_url(path): the /files/ address of a file under the roots."""
+def page(series, explainers, loose, files_url, ads=()):
+    """series: [(name, path, line)] that their own libraries serve at /u/<name>/; explainers, ad campaigns and loose:
+    [(name, path)] served as files; files_url(path): the /files/ address of a file under the roots."""
     order = [l[0] for l in LINES]
     racks = [(line, name, "/u/" + Q(name) + "/", path) for name, path, line in series] + \
-            [("explain", name, files_url(path) + "/", path) for name, path in explainers]
+            [("explain", name, files_url(path) + "/", path) for name, path in explainers] + \
+            [("ad", name, files_url(path) + "/", path) for name, path in ads]
     paths = [(line, path) for line, _, _, path in racks]
-    racks = [(line, name, href, {"drama": drama, "mv": mv, "explain": explain}.get(line, drama)(path, href))
+    racks = [(line, name, href, {"drama": drama, "mv": mv, "explain": explain, "ad": ad}.get(line, drama)(path, href))
              for line, name, href, path in sorted(racks, key=lambda r: (order.index(r[0]) if r[0] in order else 9, r[1]))]
 
     def img(path, w):

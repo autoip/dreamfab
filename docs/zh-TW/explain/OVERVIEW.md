@@ -128,6 +128,7 @@ projects/<系列>/
 | `SHORTS` | 直版的片段、上方標題、結尾字、版面，每集都寫（見步驟 9）；`EDITS` 加 `"shorts": {"suffix": "_shorts"}` |
 | `CLIPS` | 選用：影片片段，`SHOTS` 用 `"代號:秒"`（見「外語、雙語字幕……」） |
 | `CARD`、`STICKERS`、`STICKER_FONT`、`LABELS` | 選用：綜藝包裝（同上） |
+| `CUTS`、`FILM` | 選用：短版（16:9、9:16、1:1，`render.py P --cut 名稱`）、電影感；SUBS 的 `box` 白底方框字幕。見[廣告線](../ad/OVERVIEW.md) |
 
 ## 學到的事
 

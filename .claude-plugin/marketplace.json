@@ -5,7 +5,7 @@
     {
       "name": "dreamfab",
       "source": "./",
-      "description": "Dreamfab 造夢廠: AI short dramas, music videos and explainers with AutoIP + ffmpeg.",
+      "description": "Dreamfab 造夢廠: AI short dramas, music videos, explainers and ads with AutoIP + ffmpeg.",
       "version": "0.9.0"
     }
   ]

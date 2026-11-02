@@ -133,6 +133,7 @@ All optional; without them an episode is made as above. The ad line ([ad/](../ad
 | `SHORTS` | the vertical Short's clips, head line, closing line and layout, in every episode (step 9); add `"shorts": {"suffix": "_shorts"}` to `EDITS` |
 | `CLIPS` | optional: video clips, `"key:second"` in `SHOTS` (see "Other languages...") |
 | `CARD`, `STICKERS`, `STICKER_FONT`, `LABELS` | optional: the variety-show look (same section) |
+| `CUTS`, `FILM` | optional: shorter cuts (16:9, 9:16, 1:1; `render.py P --cut NAME`) and a cinema look; SUBS style `box` puts subtitles on white boxes. See [the ad line](../ad/OVERVIEW.md) |
 
 ## Lessons
 

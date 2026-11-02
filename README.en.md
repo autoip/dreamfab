@@ -17,6 +17,7 @@ Dreamfab is a framework that lets AI agents (Claude Code, Codex, and tested with
 | **戲** short drama `drama/` | Use dreamfab-drama to turn script.md into a short drama | Ready | [Drama overview](docs/en/drama/OVERVIEW.md) |
 | **曲** music video `mv/` | Use dreamfab-mv to turn song.mp3 into a music video | Ready | [MV overview](docs/en/mv/OVERVIEW.md) |
 | **說** explainer `explain/` | Use dreamfab-explain to explain the history behind my MV in 5 minutes | Ready (static B-roll; moving B-roll planned) | [Explainer overview](docs/en/explain/OVERVIEW.md) |
+| **廣** ads `ad/` | Use dreamfab-ad to make ads for my product in Japanese, Korean and English, a different look for each | Ready (products, services, brands; a main cut plus 30 s and 15 s in 16:9, 9:16 and 1:1) | [Ads overview](docs/en/ad/OVERVIEW.md) |
 | **影**, **聞** film, news | — | Later | — |
 
 Each series is a world of its own (`projects/<series>/`); its actors and voices (`cast/`, `voices/`) are cast again across episodes and seasons with the same face and voice.
