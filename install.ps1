@@ -2,7 +2,8 @@
 #   irm https://raw.githubusercontent.com/autoip/dreamfab/main/install.ps1 | iex
 # Env:
 #   DREAMFAB_HOME       install dir (default ~\.dreamfab)
-#   DREAMFAB_LINES      which lines' Python packages: drama,mv,explain,ad (default) | any of them, comma separated
+#   DREAMFAB_LINES      which lines' Python packages: drama,mv,explain,ad (default) | any of them, comma separated;
+#                       news (the pilot news line) is not in the default
 #                       (mv adds PyTorch for Demucs, MediaPipe and OpenCV: large; drama alone is light)
 #   DREAMFAB_AGENTS     where to install skills: claude,codex (default) | claude | codex | none
 #   DREAMFAB_SKIP_DEPS  1 = skip the Python venv / packages
@@ -53,7 +54,7 @@ if ($env:DREAMFAB_SKIP_DEPS -ne '1') {
         Say "installing Python packages for $($Lines -join ',') (faster-whisper pulls in its runtime; this can take a while)"
         Native $VPy -m pip install --quiet -r (Join-Path $HomeDir 'requirements.txt')
     }
-    if ($Lines -contains 'explain' -or $Lines -contains 'ad') {   # the ad line renders with the explain line
+    if ($Lines -contains 'explain' -or $Lines -contains 'ad' -or $Lines -contains 'news') {   # the ad and news lines use the explain line's tools
         Say 'installing Python packages for the explain line'
         Native $VPy -m pip install --quiet -r (Join-Path $HomeDir 'requirements-explain.txt')
     }

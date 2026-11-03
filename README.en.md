@@ -10,7 +10,7 @@ Dreamfab is a framework that lets AI agents (Claude Code, Codex, and tested with
 - **Generation engines**: pictures, video, voices and lip-sync come from the public [AutoIP](https://autoip.ai) API today (text-to-image, image-to-video, multi-reference video, lip-sync, voice cloning, AI songs); more engines will follow.
 - **The shared core** `dreamfab/`: submitting jobs, credits, half-price off-peak runs, local editing and rendering, GPU super resolution and frame generation, the library page, YouTube publishing ([the shared core and the library](docs/en/CORE.md)).
 
-## Lines: 戲・曲・說・影・聞
+## Lines: 戲・曲・說・廣・影・聞
 
 | Line | Tell the agent | Status | Docs |
 |---|---|---|---|
@@ -18,7 +18,8 @@ Dreamfab is a framework that lets AI agents (Claude Code, Codex, and tested with
 | **曲** music video `mv/` | Use dreamfab-mv to turn song.mp3 into a music video | Ready | [MV overview](docs/en/mv/OVERVIEW.md) |
 | **說** explainer `explain/` | Use dreamfab-explain to explain the history behind my MV in 5 minutes | Ready (static B-roll; moving B-roll planned) | [Explainer overview](docs/en/explain/OVERVIEW.md) |
 | **廣** ads `ad/` | Use dreamfab-ad to make ads for my product in Japanese, Korean and English, a different look for each | Ready (products, services, brands; a main cut plus 30 s and 15 s in 16:9, 9:16 and 1:1) | [Ads overview](docs/en/ad/OVERVIEW.md) |
-| **影**, **聞** film, news | — | Later | — |
+| **聞** news `news/` | Use dreamfab-news to make today's one-minute US-markets brief | Pilot (a daily one-minute vertical brief: an AI anchor opens and closes, cards, a cover and SEO copy; files only, no publishing platform yet) | [News overview](docs/en/news/OVERVIEW.md) |
+| **影** film | — | Later | — |
 
 Each series is a world of its own (`projects/<series>/`); its actors and voices (`cast/`, `voices/`) are cast again across episodes and seasons with the same face and voice.
 
@@ -89,7 +90,7 @@ That machine has no GPU, and it doesn't matter: generation runs in the AutoIP cl
 
 ## Where it is going
 
-More generation engines (one line switching engines to compare quality and price), more production lines (film 影, news 聞), and fuller agent automation: from one sentence to publishing, with people stepping in only before spending credits and before going public.
+More generation engines (one line switching engines to compare quality and price), more production lines (film 影, and news 聞 from pilot to launch), and fuller agent automation: from one sentence to publishing, with people stepping in only before spending credits and before going public.
 
 ## Licence
 

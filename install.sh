@@ -3,7 +3,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/autoip/dreamfab/main/install.sh | bash
 # Env:
 #   DREAMFAB_HOME       install dir (default ~/.dreamfab)
-#   DREAMFAB_LINES      which lines' Python packages: drama,mv,explain,ad (default) | any of them, comma separated
+#   DREAMFAB_LINES      which lines' Python packages: drama,mv,explain,ad (default) | any of them, comma separated;
+#                       news (the pilot news line) is not in the default
 #                       (mv adds PyTorch for Demucs, MediaPipe and OpenCV: large; drama alone is light;
 #                       explain adds OpenCV and pypinyin)
 #   DREAMFAB_AGENTS     where to install skills: claude,codex (default) | claude | codex | none
@@ -52,7 +53,7 @@ if [ "${DREAMFAB_SKIP_DEPS:-}" != "1" ]; then
     say "installing Python packages for $LINES (faster-whisper pulls in its runtime; this can take a while)"
     "$VPY" -m pip install --quiet -r "$HOME_DIR/requirements.txt"
   fi
-  if has_line explain || has_line ad; then   # the ad line renders with the explain line
+  if has_line explain || has_line ad || has_line news; then   # the ad and news lines use the explain line's tools
     say "installing Python packages for the explain line"
     "$VPY" -m pip install --quiet -r "$HOME_DIR/requirements-explain.txt"
   fi
