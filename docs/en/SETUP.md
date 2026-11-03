@@ -137,6 +137,7 @@ Both lines' uploaders (`drama/youtube_upload.py`, `mv/youtube_upload.py`) and th
 
 - In Google Cloud Console create an OAuth client of type "Desktop app", download its JSON to `~/.config/dreamfab/youtube_client_secret.json` (or point `YT_CLIENT_SECRET` at it). One kept in `~/.config/autoip-mv-maker/` from before the merge is still read.
 - The first run opens a browser to log in; the login is cached next to it as `youtube_token.json`. Keep both outside the repo.
+- A second channel (a news channel, say) keeps its own login with `YT_TOKEN`, e.g. `YT_TOKEN=~/.config/dreamfab/youtube_token_news.json`. Add `YT_CHANNEL_ID=<channel id>` and a login to the wrong channel is refused. The first channel's login is left alone.
 - When one Google account owns several channels, pick the right one at login; with `YT_CHANNEL_ID` or an upload plan's `channel` set, the tools act on that channel only.
 - Details: [drama publishing](drama/PUBLISHING.md) and [MV publishing](mv/PUBLISHING.md).
 

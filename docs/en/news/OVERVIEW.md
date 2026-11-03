@@ -7,8 +7,9 @@ A short vertical news brief every day (1080x1920, about a minute):
 The first show is a one-minute US-markets brief for Taiwan, out before the Taiwan market opens.
 
 **This is a pilot**:
-- It makes files only. There is no news channel and no platform to publish on.
-- The flow has no upload or publish step, and nothing runs on a daily schedule yet.
+- With no channel in the show's settings it makes files only.
+- With a channel (`CHANNEL`), `upload` puts the brief on it; `PRIVACY` decides whether it goes public.
+- A system scheduler can also run it unattended every day, from news to upload (see the last section).
 
 [中文](../../zh-TW/news/OVERVIEW.md) | English
 
@@ -109,6 +110,8 @@ python news/make.py seo   DAY        # out/<NAME>_SEO.txt
 ```
 - **Cover** (`COVER` in `day.py`):
   - The anchor's picture moves down so her face stays in the middle, clear of the text.
+  - The date leads, large on a yellow banner (`DATE` turned into 「11/3 週二」, or `COVER_DATE`): a daily show must show its day even in a phone's small tile.
+  - The Shorts shelf and a channel's Shorts tab show the video's first frame, not the uploaded thumbnail, so use `COVER_FRAME`, and run `cover` before `render`.
   - Two big hook lines go above her: the day's biggest number first (red up, green down), then a question.
   - One line below her carries the next two stories.
 - **SEO** (`SEO` in `day.py`):
@@ -116,8 +119,22 @@ python news/make.py seo   DAY        # out/<NAME>_SEO.txt
   - The description runs: the lead, one line per story (taken from the subtitles), sources, the AI and no-advice notes, the sponsor, hashtags.
   - The sections are laid out like the other lines' `YouTube_SEO.txt`. In the pilot nothing is published; it is a file.
 
-### 5. Delivery
-In the pilot it is files only: `out/<NAME>_<YYYYMMDD>.mp4`, `.zh-TW.srt`, `_cover.jpg`, `_SEO.txt`.
+### 5. Asking for the subscription
+`CTA_LINE` in `series.py` is the anchor's last line, e.g. 「記得訂閱，每天開盤前看美股一分鐘，養成習慣，掌握財金動脈！」:
+- `new` puts it last in every script.
+- While she says it, the strap changes to `CTA`.
+- The end card leads with a subscribe button and the `SUBSCRIBE` line, with the sponsor below.
+- `SEO_FOOT` carries the same ask into the description.
+
+### 6. Delivery and upload
+The brief is `out/<NAME>_<YYYYMMDD>.mp4`, `.zh-TW.srt`, `_cover.jpg` and `_SEO.txt`.
+```
+python news/make.py upload DAY            # PRIVACY in series.py decides (private when unset); --public / --private override it
+```
+- It goes to `series.py`'s `CHANNEL` with that channel's own login (`YT_TOKEN`, see [SETUP](../SETUP.md)), so it cannot land on another channel.
+- It uses title A, the description, tags, subtitles and the cover; `CATEGORY` defaults to 25 (News & Politics).
+- The channel's daily cap (`youtube.daily_max`) still applies. `out/youtube.json` keeps the id, so a second run uploads nothing.
+- **Cover**: the channel must be verified before it can use custom thumbnails; until then the cover is skipped with a note. The Shorts shelf picks its own frame, so `COVER_FRAME = 0.3` makes the first 0.3 s the cover, with no subtitle over it.
 
 ## Speed and credits (11/03 pilot, measured)
 
@@ -134,3 +151,10 @@ In the pilot it is files only: `out/<NAME>_<YYYYMMDD>.mp4`, `.zh-TW.srt`, `_cove
   - Starting a show adds the anchor's portrait (v4, 20) and her voice test (image-to-video 480p 8 s, 48).
 - **Timing**: the US market closes at 05:00 Taiwan time (04:00 in US summer time), and so does the TAIEX futures night session.
   - Starting at 05:15 gives a finished brief around 05:30, at the off-peak price, with time to redo before the Taiwan open.
+
+## Unattended: made and uploaded every day
+Let a system scheduler (Windows Task Scheduler, cron) start an agent once a day, e.g. `claude -p "<daily instructions>" --allowedTools Bash,Read,Write,Edit,WebSearch,WebFetch`:
+- **The daily instructions**: say what the user approved in advance (the daily off-peak credits, publishing directly) and what is off limits (other projects, commits).
+- **The flow**: steps 1 to 6 above, ending with a log in the show's folder: the link, the credits, minutes per step and anything that went wrong.
+- **Which days**: Monday to Friday at 05:15. Monday covers Friday's close; skip days when the US market was shut.
+- **Too late, skip it**: if the computer slept through the slot and the run starts after 08:30, skip it, so stale news is not made at full price after the off-peak window.

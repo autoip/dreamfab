@@ -18,7 +18,7 @@ Dreamfab 是讓 AI Agent（Claude Code、Codex，也實測過 Grok Bot）自動�
 | **曲**：MV `mv/` | 用 dreamfab-mv 把 song.mp3 做成 MV | 可用 | [MV 總覽](docs/zh-TW/mv/OVERVIEW.md) |
 | **說**：解說影片 `explain/` | 用 dreamfab-explain 把 MV《洛川》背後的歷史做成 5 分鐘解說 | 可用（靜態 B-roll；動態規劃中） | [解說總覽](docs/zh-TW/explain/OVERVIEW.md) |
 | **廣**：廣告 `ad/` | 用 dreamfab-ad 把我的產品做成日、韓、英三國廣告，每國一種風格 | 可用（實體商品、服務、品牌；主版＋30／15 秒，16:9、9:16、1:1） | [廣告總覽](docs/zh-TW/ad/OVERVIEW.md) |
-| **聞**：新聞 `news/` | 用 dreamfab-news 做今天的美股一分鐘 | 試播（每日 1 分鐘直式新聞：AI 主播開場收尾、字卡、封面和 SEO；只出檔案，還沒有發布平台） | [新聞總覽](docs/zh-TW/news/OVERVIEW.md) |
+| **聞**：新聞 `news/` | 用 dreamfab-news 做今天的美股一分鐘 | 試播（每日 1 分鐘直式新聞：AI 主播開場收尾、字卡、封面和 SEO、結尾催訂閱；可上架到 YouTube、每天無人值守） | [新聞總覽](docs/zh-TW/news/OVERVIEW.md) |
 | **影**：電影 | — | 之後 | — |
 
 每個系列是一個世界（`projects/<系列>/`），演員和聲音（`cast/`、`voices/`）跨集、跨季重複演出，臉和聲音不會跑掉。

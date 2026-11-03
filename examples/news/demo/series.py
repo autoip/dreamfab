@@ -12,4 +12,14 @@ SPONSOR = dict(kicker="本新聞由以下平台獨家贊助", name="autoip.ai", 
 FIRST_LINE = "早安，台股開盤前，一分鐘看懂昨晚美股。｜早安，台股開盤前，一分鐘看懂昨晚美股｜anchor"
 LAST_LINE = "以上是一分鐘美股，本新聞由AutoIP點AI平台獨家贊助。｜以上是一分鐘美股，本新聞由 autoip.ai 平台獨家贊助｜anchor"
 SEO_TAGS = ["美股", "台股", "美股新聞", "財經新聞", "台股開盤", "費半", "台積電ADR", "美股一分鐘"]
-SEO_FOOT = "📈 美股一分鐘：每天台股開盤前，一分鐘看懂昨晚美股\n本新聞由 autoip.ai 平台獨家贊助"
+SEO_FOOT = "🔔 記得訂閱，每天台股開盤前看美股一分鐘，養成習慣，掌握財金動脈\n📈 美股一分鐘：每天台股開盤前，一分鐘看懂昨晚美股\n本新聞由 autoip.ai 平台獨家贊助"
+# the call to subscribe, said last by the anchor, with its own strap; the end card leads with it
+CTA_LINE = "記得訂閱，每天開盤前看美股一分鐘，養成習慣，掌握財金動脈！｜記得訂閱，每天開盤前看美股一分鐘，養成習慣，掌握財金動脈｜anchor"
+CTA = ("🔔 記得訂閱", "養成習慣・掌握財金動脈")
+SUBSCRIBE = dict(button="訂閱", line="每天台股開盤前看美股一分鐘<br>養成習慣，掌握財金動脈")
+COVER_FRAME = 0.3                               # the first 0.3 s of the video is the cover
+# upload: the channel and its own login (docs SETUP); PRIVACY "public" publishes at once, unset = private
+# CHANNEL = "UC..."
+# YT_TOKEN = a login file of this channel's own (docs SETUP: a second channel)
+# PRIVACY = "public"
+CATEGORY = "25"                                 # News & Politics

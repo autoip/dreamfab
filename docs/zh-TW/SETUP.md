@@ -137,6 +137,7 @@ python dreamfab/workflow.py set credits.off_peak on    # 想每次都這樣：�
 
 - 在 Google Cloud Console 建一個「電腦版應用程式」類型的 OAuth client，下載 JSON 放到 `~/.config/dreamfab/youtube_client_secret.json`（或用環境變數 `YT_CLIENT_SECRET` 指定位置）。合併前放在 `~/.config/autoip-mv-maker/` 的也讀得到。
 - 第一次執行會開瀏覽器登入，登入結果存成同一個資料夾的 `youtube_token.json`。兩個檔都留在 repo 外面。
+- 第二個頻道（例如新聞頻道）用 `YT_TOKEN` 另外存一份登入，例如 `YT_TOKEN=~/.config/dreamfab/youtube_token_news.json`。再加上 `YT_CHANNEL_ID=<頻道 ID>`，登入時選錯頻道就會被擋下來；第一個頻道的登入不會被動到。
 - 一個 Google 帳號有好幾個頻道時，登入時要選對；設 `YT_CHANNEL_ID` 或上架計畫的 `channel`，程式只會對那個頻道動作。
 - 詳細流程見 [短劇的上架](drama/PUBLISHING.md) 和 [MV 的上架](mv/PUBLISHING.md)。
 

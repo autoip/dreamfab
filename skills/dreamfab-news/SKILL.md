@@ -29,7 +29,9 @@ through `news/make.py`; read `ROOT/docs/en/news/OVERVIEW.md` before the first da
 
 ## Hard rules
 
-- **Pilot: files only.** No upload, no publishing, no scheduled run unless the user sets one up and says so.
+- **Upload only to the show's channel, as the show says.** `upload` goes to `series.py`'s `CHANNEL` with its own login
+  and at its `PRIVACY`. With no channel it is files only. Never pick a privacy, a channel or a schedule the user did not
+  set. An unattended daily run works under the approvals written in its instructions: no questions, a log at the end.
 - **Credits are charged on submit and there is no cancel.** Before the first job of a day (and before any extra
   re-read) give the price now and off-peak (03:00-09:00 Taiwan time, half; `submit … --off-peak`) and wait for a yes,
   unless the user has approved a standing daily run. One job at a time.
@@ -60,10 +62,11 @@ through `news/make.py`; read `ROOT/docs/en/news/OVERVIEW.md` before the first da
 4. `cards`, `cover`, `seo` (no credits). Show the cards and the cover before spending anything.
 5. `voice` → `submit voice` → `check`. Listen to every spot `check` lists. English names are often written otherwise
    by the recogniser, so do not re-read on the transcript alone.
-6. `anchor` → `submit lipsync` (only her two parts, about 8 s) → `render`.
+6. `anchor` → `submit lipsync` (only her opening and her closing lines, the call to subscribe included) → `render`.
 7. A line read wrong: `redo DAY FIRST LAST` → `submit redo` → `splice DAY FIRST LAST`. The lip-sync is kept when her
    lines did not change. If only a word of the new take is wrong, mix old and new by hand at the pauses.
-8. Report:
+8. `upload` when the show has a channel (then report the link).
+9. Report:
    - the files: `out/<NAME>_<YYYYMMDD>.mp4`, `.zh-TW.srt`, `_cover.jpg`, `_SEO.txt`
    - the length and the credits spent
    - the spots to listen to

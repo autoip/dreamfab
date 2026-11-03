@@ -17,6 +17,9 @@ usage: python news/make.py new SERIES [YYYY-MM-DD]       a day folder: day.py fr
        python news/make.py splice DAY FIRST [LAST]      put voice/redo.flac in place of those lines, cut at the pauses
                                                         (gaps of 0.3 s at least); the anchor clip is kept
        python news/make.py render DAY                   out/<NAME>_<YYYYMMDD>.mp4 + .zh-TW.srt
+       python news/make.py upload DAY [--public|--private]   to series.py's CHANNEL (its own login, YT_TOKEN) with the
+                                                        SEO file's title A, description, tags, the subtitles and the
+                                                        cover; PRIVACY in series.py, else private; daily cap kept
 Every step adds a line to SERIES/timing.tsv (day, step, start, end, minutes): what a daily slot has to fit.
 
 SERIES/series.py (the show; see examples/news/demo):
@@ -27,6 +30,8 @@ SERIES/series.py (the show; see examples/news/demo):
   MUSIC = "music/theme.mp3"          the theme; MUSIC_LOOP = (start, end) of whole bars that may repeat, MUSIC_BAR = 2.0
   OPEN = (kicker, title)             the strap over the anchor at the start; CLOSE the one at the end
   FIRST_LINE / LAST_LINE             fixed script lines (spoken｜subtitle｜anchor)
+  CTA_LINE, CTA = (kicker, title)    the call to subscribe said last, with its own strap
+  SUBSCRIBE = dict(button=, line=)   the end card asks for the subscription first, the sponsor under it
   SPONSOR = dict(kicker=, name=, sub=)   the end card, shown once the anchor clip runs out (or END_CARD = a card id)
 DAY/day.py: DATE, SOURCES, CARDS = {id: html}; row(), bar() and box() are there to build them.
   COVER = dict(lines=[("費半重挫 3.4%", "down"), ("AI 股殺不停？", "gold")], sub="...")   the cover's hook
@@ -186,6 +191,7 @@ def new_day(series, when=None):
     exec(open(os.path.join(series, "series.py"), encoding="utf-8").read(), ns)
     lines = [f"# {when}", "", "每一行三欄，用全形直線隔開：唸的（數字寫國字）、字幕（阿拉伯數字）、畫面（anchor 或 CARDS 的 id）", "",
              ns.get("FIRST_LINE", "早安。｜早安｜anchor"), "", ns.get("LAST_LINE", "以上是今天的新聞。｜以上是今天的新聞｜anchor"),
+             *([ns["CTA_LINE"]] if ns.get("CTA_LINE") else []),
              "", "## 資料來源", "- "]
     open(os.path.join(day, "script.md"), "w", encoding="utf-8", newline="\n").write("\n".join(lines) + "\n")
     print(f"{day}: write the news lines between the first and the last line of script.md")
@@ -218,18 +224,23 @@ def cards(day):
     shoot(page(top, True), os.path.join(out, "_top.png"), True)
     for cid, body in d.get("CARDS", {}).items():
         shoot(page(f'<div class="wrap">{body}</div>'), os.path.join(out, f"{cid}.png"))
-    for cid, key in (("_open", "OPEN"), ("_close", "CLOSE")):
+    for cid, key in (("_open", "OPEN"), ("_close", "CLOSE"), ("_cta", "CTA")):
         if key in d:
             k, t = d[key]
-            foot = f'<div class="foot">{d.get("SOURCES", "")}</div>' if cid == "_close" else ""
+            foot = f'<div class="foot">{d.get("SOURCES", "")}</div>' if cid in ("_close", "_cta") else ""
             shoot(page(f'<div class="lower"><div class="k">{k}</div><div class="t">{t}</div></div>{foot}', True),
                   os.path.join(out, f"{cid}.png"), True)
-    if "SPONSOR" in d and not d.get("END_CARD"):
-        s = d["SPONSOR"]
-        shoot(page(f'<div class="wrap"><div style="text-align:center"><div class="kick">{s.get("kicker", "")}</div>'
-                   f'<div class="big" style="font-size:150px;margin-top:60px;color:#f5c542">{s.get("name", "")}</div>'
-                   f'<div class="sub" style="margin-top:50px">{s.get("sub", "")}</div>'
-                   f'<div class="note" style="margin-top:120px;line-height:1.6">{d.get("SOURCES", "")}</div></div></div>'),
+    if ("SPONSOR" in d or "SUBSCRIBE" in d) and not d.get("END_CARD"):
+        s, sub = d.get("SPONSOR", {}), d.get("SUBSCRIBE")
+        ask = (f'<div style="display:inline-block;background:#e62117;color:#fff;font-size:84px;font-weight:900;padding:22px 70px;'
+               f'border-radius:60px">{sub.get("button", "訂閱")}</div>'
+               f'<div class="sub" style="margin-top:44px;font-size:56px;color:#eef3ff;font-weight:700;line-height:1.4">{sub.get("line", "")}</div>'
+               if sub else "")
+        spons = (f'<div class="kick" style="margin-top:{90 if sub else 0}px">{s.get("kicker", "")}</div>'
+                 f'<div class="big" style="font-size:{110 if sub else 150}px;margin-top:30px;color:#f5c542">{s.get("name", "")}</div>'
+                 + ("" if sub else f'<div class="sub" style="margin-top:50px">{s.get("sub", "")}</div>') if s else "")
+        shoot(page(f'<div class="wrap"><div style="text-align:center">{ask}{spons}'
+                   f'<div class="note" style="margin-top:90px;line-height:1.6">{d.get("SOURCES", "")}</div></div></div>'),
               os.path.join(out, "_end.png"))
     print("cards ->", out)
 
@@ -244,8 +255,10 @@ def cover(day):
         sys.exit("day.py has no COVER = dict(lines=[(text, colour)], sub=...)")
     colours = dict(up="#ff4d4f", down="#27d17f", gold="#f5c542", white="#ffffff")
     pic = pathlib.Path(os.path.abspath(sp(day, d.get("COVER_IMAGE", d["ANCHOR"])))).as_uri()
-    shift = c.get("shift", 420)   # the picture moves down so the face sits below the hook
+    shift = c.get("shift", 560)   # the picture moves down so the face sits below the date and the hook
     b1, b2 = d.get("BRAND", ("新聞", ""))
+    # a daily show: the date is the first thing read, big enough for a phone's small tile ("11/3（二）" -> "11/3 週二")
+    when = d.get("COVER_DATE") or re.sub(r"（(.)）", r" 週\1", d.get("DATE", ""))
     lines = "".join(f'<div style="font-size:{140 if k == 0 else 108}px;color:{colours.get(col, col)};font-weight:900;line-height:1.1;'
                     f'-webkit-text-stroke:{8 if k == 0 else 6}px #050a14;paint-order:stroke fill">{t}</div>'
                     for k, (t, col) in enumerate(c["lines"]))
@@ -253,9 +266,12 @@ def cover(day):
             f'<div style="position:absolute;left:0;right:0;top:0;height:{shift + 260}px;'
             f'background:linear-gradient(#070d1a 0%,#070d1a {int(shift / (shift + 260) * 100)}%,#070d1a00 100%)"></div>'
             f'<div style="position:absolute;left:0;right:0;bottom:0;height:620px;background:linear-gradient(#070d1a00,#070d1aee 55%)"></div>'
-            f'<div style="position:absolute;left:60px;right:60px;top:70px">'
-            f'<div class="brand" style="font-size:46px"><b>{b1}</b>{b2}<span class="date" style="margin-left:24px">{d.get("DATE", "")}</span></div>'
-            f'<div style="margin-top:34px">{lines}</div></div>'
+            f'<div style="position:absolute;left:60px;right:60px;top:60px">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center">'
+            f'<div style="background:#f5c542;color:#0b1426;font-size:124px;font-weight:900;line-height:1;padding:16px 34px 20px;'
+            f'border-radius:26px">{when}</div>'
+            f'<div style="text-align:right;font-size:58px;font-weight:900;line-height:1.15">{b1}<br>{b2}</div></div>'
+            f'<div style="margin-top:36px">{lines}</div></div>'
             f'<div style="position:absolute;left:50px;right:50px;bottom:200px;padding:30px 40px;border-radius:26px;'
             f'background:rgba(8,16,34,.88);border-left:14px solid #f5c542;font-size:52px;font-weight:700;line-height:1.35">{c.get("sub", "")}</div>')
     os.makedirs(os.path.join(day, "out"), exist_ok=True)
@@ -289,6 +305,82 @@ def seo(day):
     open(out, "w", encoding="utf-8", newline="\n").write(txt)
     long = [t for t in s["titles"] if len(t) > 60]
     print(out + ("" if not long else f"  !! {len(long)} title(s) over 60 characters: the hook may be cut off"))
+
+
+def upload(day, privacy=None):
+    """Upload out/<NAME>.mp4 with title A, the description and tags of out/<NAME>_SEO.txt, the subtitles and the cover,
+    to series.py's CHANNEL with its own login (YT_TOKEN), at PRIVACY (default private). Stops at the channel's daily cap
+    (youtube.daily_max); out/youtube.json keeps the id, so a second run does nothing."""
+    d, _ = load(day)
+    if not d.get("CHANNEL"):
+        sys.exit("series.py has no CHANNEL (the channel id) to upload to")
+    if d.get("YT_TOKEN"):
+        os.environ["YT_TOKEN"] = os.path.expanduser(d["YT_TOKEN"])
+    os.environ["YT_CHANNEL_ID"] = d["CHANNEL"]
+    from googleapiclient.errors import HttpError
+    from googleapiclient.http import MediaFileUpload
+    from dreamfab.youtube_api import youtube, channel
+    from dreamfab.youtube_log import record, quota
+    name, od = name_of(day, d), os.path.join(day, "out")
+    state_p = os.path.join(od, "youtube.json")
+    if os.path.exists(state_p):
+        print("already uploaded: https://youtu.be/" + json.load(open(state_p, encoding="utf-8"))["id"]); return
+    seo_txt = open(os.path.join(od, f"{name}_SEO.txt"), encoding="utf-8").read()
+    sec = dict(re.findall(r"=+ (.+?) =+\n(.*?)(?=\n=+ |\Z)", seo_txt, flags=re.S))
+    title = re.search(r"^A\. (.+)$", next(v for k, v in sec.items() if k.startswith("標題")), flags=re.M).group(1).strip()
+    desc = next(v for k, v in sec.items() if k.startswith("說明欄")).strip()
+    tags = [t.strip() for t in next(v for k, v in sec.items() if k.startswith("標籤")).split(",") if t.strip()]
+    if len(title) > 100 or len(desc.encode()) > 5000:
+        sys.exit(f"title {len(title)} characters (100 at most) or description {len(desc.encode())} bytes (5,000 at most)")
+    privacy = privacy or d.get("PRIVACY", "private")
+    yt = youtube()
+    cid = channel(yt, lock=True, expect=d["CHANNEL"])["id"]
+    if quota(cid, day) == 0:
+        sys.exit("the channel has put out its videos for today (youtube.daily_max): upload tomorrow")
+    body = dict(snippet=dict(title=title, description=desc, tags=tags, categoryId=d.get("CATEGORY", "25"),
+                             defaultLanguage="zh-TW", defaultAudioLanguage="zh-TW"),
+                status=dict(privacyStatus=privacy, selfDeclaredMadeForKids=False, containsSyntheticMedia=True,
+                            embeddable=True, license="youtube"))
+    req = yt.videos().insert(part="snippet,status", body=body,
+                             media_body=MediaFileUpload(os.path.join(od, f"{name}.mp4"), mimetype="video/mp4",
+                                                        chunksize=16 * 1024 * 1024, resumable=True))
+    resp, tries = None, 0
+    while resp is None:
+        try:
+            st, resp = req.next_chunk()
+            if st:
+                print(f"  {st.progress() * 100:.0f}%", flush=True)
+        except (HttpError, OSError) as e:
+            if (isinstance(e, HttpError) and e.resp.status not in (500, 502, 503, 504)) or tries >= 8:
+                raise
+            tries += 1
+            time.sleep(2 ** tries)
+    vid = resp["id"]
+    json.dump(dict(id=vid, channel=cid, title=title, privacy=privacy, at=datetime.now().isoformat(timespec="seconds")),
+              open(state_p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    record(vid, "upload", title, day, "news")
+    if privacy == "public":
+        record(vid, "publish", "uploaded public (news)", day, "news")
+    print(f"  uploaded https://youtu.be/{vid} ({privacy})")
+    srt = os.path.join(od, f"{name}.zh-TW.srt")
+    if os.path.exists(srt):
+        yt.captions().insert(part="snippet", body=dict(snippet=dict(videoId=vid, language="zh-TW", name="", isDraft=False)),
+                             media_body=MediaFileUpload(srt, mimetype="application/octet-stream")).execute()
+        record(vid, "captions", os.path.basename(srt), day, "news")
+        print("  captions", os.path.basename(srt))
+    cov = os.path.join(od, f"{name}_cover.jpg")
+    if os.path.exists(cov):
+        try:   # the Shorts shelf picks its own frame; search and the watch page use this one
+            yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(cov, mimetype="image/jpeg")).execute()
+            record(vid, "thumbnail", os.path.basename(cov), day, "news")
+            print("  thumbnail", os.path.basename(cov))
+        except HttpError as e:
+            print("  !! thumbnail not set:", getattr(e, "reason", e))
+    if d.get("PLAYLIST"):
+        yt.playlistItems().insert(part="snippet", body=dict(snippet=dict(
+            playlistId=d["PLAYLIST"], resourceId=dict(kind="youtube#video", videoId=vid)))).execute()
+        record(vid, "playlist", d["PLAYLIST"], day, "news")
+        print("  playlist", d["PLAYLIST"])
 
 
 # ---- jobs
@@ -546,6 +638,8 @@ def render(day):
         for j, (t0, txt) in enumerate(groups):
             t1 = groups[j + 1][0] if j + 1 < len(groups) else b
             ev.append((t0, t1 - 0.05, txt.rstrip("，。")))
+    cf = d.get("COVER_FRAME", 0)   # no subtitle over the cover frames
+    ev = [(max(a, cf), b, t) for a, b, t in ev if b > cf]
     font = d.get("SUB_FONT", "Microsoft JhengHei")
     ass = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, "
            "PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, "
@@ -558,7 +652,8 @@ def render(day):
     ass_p = os.path.join(od, "subs.ass")
     open(ass_p, "w", encoding="utf-8").write(ass)
     name = name_of(day, d)
-    srt = "".join(f"{k + 1}\n{ass_time(a).replace('.', ',')}0 --> {ass_time(b).replace('.', ',')}0\n{t}\n\n" for k, (a, b, t) in enumerate(ev))
+    srt_t = lambda t: f"{int(t // 3600):02d}:{int(t % 3600 // 60):02d}:{t % 60:06.3f}".replace(".", ",")
+    srt = "".join(f"{k + 1}\n{srt_t(a)} --> {srt_t(b)}\n{t}\n\n" for k, (a, b, t) in enumerate(ev))
     open(os.path.join(od, f"{name}.zh-TW.srt"), "w", encoding="utf-8").write(srt)
 
     def rgba(p):
@@ -566,7 +661,8 @@ def render(day):
         return im[..., :3].astype(np.float32), im[..., 3:4].astype(np.float32) / 255
     cd = os.path.join(day, "cards")
     top, top_a = rgba(os.path.join(cd, "_top.png"))
-    straps = {k: rgba(os.path.join(cd, f"_{k}.png")) for k in ("open", "close") if os.path.exists(os.path.join(cd, f"_{k}.png"))}
+    straps = {k: rgba(os.path.join(cd, f"_{k}.png")) for k in ("open", "close", "cta") if os.path.exists(os.path.join(cd, f"_{k}.png"))}
+    cta_at = starts[-1] if d.get("CTA_LINE") and rows[-1][0] == d["CTA_LINE"].split("｜")[0].strip() else None
     imgs = {s: imread(os.path.join(cd, f"{s}.png")) for _, _, s in shots if s != "anchor"}
     end_id = d.get("END_CARD") or ("_end" if os.path.exists(os.path.join(cd, "_end.png")) else None)
     if end_id:
@@ -588,6 +684,8 @@ def render(day):
                             "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", silent],
                            stdin=subprocess.PIPE)
     end_at = None
+    cv_p = os.path.join(od, f"{name}_cover.jpg")
+    cover_img = imread(cv_p).astype(np.float32) if d.get("COVER_FRAME") and os.path.exists(cv_p) else None
     for i in range(int(length * FPS)):
         t = i / FPS
         k = max(j for j, (a, _, _) in enumerate(shots) if a <= t + 1e-6)
@@ -597,9 +695,10 @@ def render(day):
             fr = imgs[end_id].astype(np.float32) * min(1.0, 0.35 + (t - end_at) / 0.25)
         elif s == "anchor":
             fr = cv2.resize(frames[min(int(clip_t(t) * afps), len(frames) - 1)], (W, H), interpolation=cv2.INTER_LANCZOS4).astype(np.float32)
-            strap = straps.get("open" if k == 0 else "close")
+            key = "open" if k == 0 else "cta" if cta_at is not None and t >= cta_at and "cta" in straps else "close"
+            strap = straps.get(key)
             if strap:
-                show = min(1.0, (t - a) / 0.3)
+                show = min(1.0, (t - (cta_at if key == "cta" else a)) / 0.3)
                 fr = fr * (1 - strap[1] * show) + strap[0] * strap[1] * show
         else:
             u = (t - a) / max(0.01, b - a)
@@ -608,6 +707,8 @@ def render(day):
             if t - a < 0.18:   # slides in from the right
                 fr = np.roll(fr, int((1 - (t - a) / 0.18) ** 2 * 140), axis=1) * (0.6 + 0.4 * (t - a) / 0.18)
         fr = fr * (1 - top_a) + top * top_a
+        if cover_img is not None and t < d.get("COVER_FRAME", 0):   # the cover as the first frames
+            fr = cover_img
         enc.stdin.write(np.clip(fr, 0, 255).astype(np.uint8).tobytes())
     enc.stdin.close(); enc.wait()
     out = os.path.join(od, f"{name}.mp4")
@@ -633,7 +734,8 @@ if __name__ == "__main__":
     if cmd == "new":
         new_day(target, rest[0] if rest else None)
         sys.exit()
-    steps = dict(cards=lambda: cards(target), cover=lambda: cover(target), seo=lambda: seo(target), voice=lambda: voice(target), check=lambda: check(target),
+    steps = dict(cards=lambda: cards(target), cover=lambda: cover(target), seo=lambda: seo(target),
+                 upload=lambda: upload(target, "private" if "--private" in rest else "public" if "--public" in rest else None), voice=lambda: voice(target), check=lambda: check(target),
                  anchor=lambda: anchor(target), render=lambda: render(target),
                  redo=lambda: redo(target, nums[0], nums[-1]), splice=lambda: splice(target, nums[0], nums[-1]),
                  submit=lambda: submit(target, rest[0], "--off-peak" in rest))

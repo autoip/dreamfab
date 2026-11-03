@@ -4,6 +4,8 @@ dreamfab/youtube_playlists.py; analytics() for dreamfab/youtube_analytics.py (Yo
 Credentials: YT_CLIENT_SECRET = an OAuth client of type "Desktop app" (default
 ~/.config/dreamfab/youtube_client_secret.json; ~/.config/dreamfab/ from before the merge is still read when the
 new folder has none); the login is cached next to it as youtube_token.json. Keep both outside the repo.
+YT_TOKEN (optional) = another file for the login, so a second channel keeps its own (e.g.
+~/.config/dreamfab/youtube_token_news.json); the first channel's login is left alone.
 YT_CHANNEL_ID (optional) = the only channel a script may act on.
 """
 import os, sys, time
@@ -24,7 +26,7 @@ def _secret():
 
 
 SECRET = _secret()
-TOKEN = os.path.join(os.path.dirname(SECRET), "youtube_token.json")
+TOKEN = os.path.expanduser(os.environ.get("YT_TOKEN") or os.path.join(os.path.dirname(SECRET), "youtube_token.json"))
 
 
 def _creds(scopes):
