@@ -18,7 +18,7 @@ Dreamfab 是讓 AI Agent（Claude Code、Codex，也實測過 Grok Bot）自動�
 | **曲**：MV `mv/` | 用 dreamfab-mv 把 song.mp3 做成 MV | 可用 | [MV 總覽](docs/zh-TW/mv/OVERVIEW.md) |
 | **說**：解說影片 `explain/` | 用 dreamfab-explain 把 MV《洛川》背後的歷史做成 5 分鐘解說 | 可用（靜態 B-roll；動態規劃中） | [解說總覽](docs/zh-TW/explain/OVERVIEW.md) |
 | **廣**：廣告 `ad/` | 用 dreamfab-ad 把我的產品做成日、韓、英三國廣告，每國一種風格 | 可用（實體商品、服務、品牌；主版＋30／15 秒，16:9、9:16、1:1） | [廣告總覽](docs/zh-TW/ad/OVERVIEW.md) |
-| **聞**：新聞 `news/` | 用 dreamfab-news 做今天的美股一分鐘 | 試播（每日 1 分鐘直式新聞：AI 主播開場收尾、字卡、封面和 SEO、結尾催訂閱；可上架到 YouTube、每天無人值守） | [新聞總覽](docs/zh-TW/news/OVERVIEW.md) |
+| **聞**：新聞 `news/` | 用 dreamfab-news 做今天的美股一分鐘；做一集深度報導：Lumentum 為什麼紅 | 可用（新）：每日 1 分鐘直式快報（AI 主播開場收尾、字卡、封面和 SEO、無人值守自動上架）、3–6 分鐘 16:9 深度報導 | [新聞總覽](docs/zh-TW/news/OVERVIEW.md) |
 | **影**：電影 | — | 之後 | — |
 
 每個系列是一個世界（`projects/<系列>/`），演員和聲音（`cast/`、`voices/`）跨集、跨季重複演出，臉和聲音不會跑掉。
@@ -39,6 +39,11 @@ Dreamfab 是讓 AI Agent（Claude Code、Codex，也實測過 Grok Bot）自動�
 
 一整季的 MV 系列：[《國風淒美對唱》播放清單](https://www.youtube.com/playlist?list=PLfoBI7oPycHg)，6 集，同一套畫面和包裝，每集換一種曲風。
 
+**新聞**：用新聞線做的財經新聞，同一位 AI 主播。
+
+- ▶ 美股一分鐘：每天台股開盤前，一分鐘看懂昨晚美股，無人值守自動做完、上架：https://youtu.be/NupJ10Z46xg
+- ▶ 深度報導〈Lumentum 為什麼紅？光，為什麼是 AI 的命脈〉，3 分 47 秒：https://youtu.be/SR1r42OAaXg
+
 ## 安裝
 
 ### 電腦：一行安裝（Claude Code / Codex）
@@ -55,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/autoip/dreamfab/main/install.sh | b
 irm https://raw.githubusercontent.com/autoip/dreamfab/main/install.ps1 | iex
 ```
 
-預設裝短劇、MV、解說三條線；只做短劇就設 `DREAMFAB_LINES=drama`。plugin 安裝、ffmpeg（要有 libass）、字型、`AUTOIP_API_KEY` 見 [SETUP.md](docs/zh-TW/SETUP.md)。
+預設裝短劇、MV、解說、廣告四條線；要做新聞，加上 `news`（例如 `DREAMFAB_LINES=drama,mv,explain,ad,news`）；只做短劇就設 `DREAMFAB_LINES=drama`。plugin 安裝、ffmpeg（要有 libass）、字型、`AUTOIP_API_KEY` 見 [SETUP.md](docs/zh-TW/SETUP.md)。
 
 **更新**：再跑一次同一行。作品和設定都不會動，舊版的資料庫會自己併進來；plugin、自己 clone 的更新方式見 [SETUP.md〈從舊版更新〉](docs/zh-TW/SETUP.md#7-從舊版更新)。
 
@@ -82,15 +87,16 @@ irm https://raw.githubusercontent.com/autoip/dreamfab/main/install.ps1 | iex
 | 文件 | 內容 |
 |---|---|
 | [SETUP.md](docs/zh-TW/SETUP.md) | 安裝、顯卡、API key、離峰半價、YouTube 登入、素材權利、從舊版更新 |
-| [短劇總覽](docs/zh-TW/drama/OVERVIEW.md)・[MV 總覽](docs/zh-TW/mv/OVERVIEW.md)・[解說總覽](docs/zh-TW/explain/OVERVIEW.md) | 每條線的流程、格式、剪輯、上架、踩坑紀錄 |
+| [短劇總覽](docs/zh-TW/drama/OVERVIEW.md)・[MV 總覽](docs/zh-TW/mv/OVERVIEW.md)・[解說總覽](docs/zh-TW/explain/OVERVIEW.md)・[廣告總覽](docs/zh-TW/ad/OVERVIEW.md)・[新聞總覽](docs/zh-TW/news/OVERVIEW.md) | 每條線的流程、格式、剪輯、上架、踩坑紀錄 |
 | [共用核心與資源庫](docs/zh-TW/CORE.md) | 系列資料夾、資源庫網頁、`dreamfab/` 每個檔案做什麼 |
 | [WORKFLOW.md](docs/zh-TW/WORKFLOW.md) | 工作流程開關：哪些步驟自動做，你自己決定 |
 | [GPU_ENHANCE.md](docs/zh-TW/GPU_ENHANCE.md) | 本機超分＋補幀：工具、實測速度與效果 |
+| [PRONUNCIATION.md](docs/zh-TW/PRONUNCIATION.md) | AI 唸錯字怎麼辦：怎麼發現、錯音表 `SAY`、要重唸哪些、實際用過的錯音表 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 貢獻原始碼：什麼可以進 repo、去識別化、送出前的檢查 |
 
 ## 未來方向
 
-更多生成引擎（同一條產線換引擎、比畫質和價錢）、更多產線（影・電影；聞・新聞從試播到正式上線），以及更完整的 agent 自動化：從一句話到上架，人只在花錢和公開之前點頭。
+更多生成引擎（同一條產線換引擎、比畫質和價錢）、更多產線（影・電影）、新聞線更多節目，以及更完整的 agent 自動化：從一句話到上架，人只在花錢和公開之前點頭。
 
 ## 授權
 

@@ -23,3 +23,7 @@ COVER_FRAME = 0.3                               # the first 0.3 s of the video i
 # YT_TOKEN = a login file of this channel's own (docs SETUP: a second channel)
 # PRIVACY = "public"
 CATEGORY = "25"                                 # News & Politics
+# every weekday with no one there (news/make.py schedule, then daily): skipped when it starts after `latest`
+# DAILY = dict(at="06:30", days="mon-fri", latest="08:30")
+# words the voice misreads: a same-length, same-sounding swap, read only (the subtitle keeps the word)
+SAY = [("光纖", "光仙"), ("供給", "供擠"), ("叢集", "從集"), ("瓶頸", "瓶錦"), ("重啟", "崇啟"), ("銦", "因"), ("〇", "零")]

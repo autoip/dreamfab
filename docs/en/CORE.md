@@ -21,7 +21,7 @@ python dreamfab/library.py list projects      # just lists the series it finds a
 
 **Home is the factory floor.** The top row is the flow: one sentence → AI agent → production lines ⇄ generation engines → warehouse → YouTube, each with its numbers (in the making, finished, uploaded).
 
-**Production lines**: one conveyor each for drama (戲), MV (曲) and explainer (說), with that line's stations (drama: script → storyboard → generation → cut → cover; explainer: script → narration → pictures → cut → cover). Every episode still being made sits at the first station it has not passed and links to its page; a line with work on it runs, its rollers turning and parcels riding into the warehouse. Film (影) and news (聞) are lines still to come.
+**Production lines**: one conveyor each for drama (戲), MV (曲), explainer (說) and ads (廣), with that line's stations (drama: script → storyboard → generation → cut → cover; explainer: script → narration → pictures → cut → cover). Every episode still being made sits at the first station it has not passed and links to its page; a line with work on it runs, its rollers turning and parcels riding into the warehouse. News (聞) shows, one folder a day, are browsed as plain files; its in-depth reports use the explainer format and appear on that line. Film (影) is a line still to come.
 
 ![Home: the flow on top, then the drama, MV and explainer lines, each episode at its station](../images/library_home_lines.jpg)
 

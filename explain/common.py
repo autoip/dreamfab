@@ -62,9 +62,28 @@ def spoken(text, proj):
 
 
 def written(text, proj):
-    """The subtitle text for spoken text (SAY undone)."""
-    for w, said in getattr(proj, "SAY", []):
-        text = text.replace(said, w)
+    """The subtitle text for spoken text (SAY undone) - only where a swap was made: the spoken text is found in the
+    spoken script and the same span of the written script is returned, so a said character that also occurs on its
+    own (因 for 銦, but also in 因為) stays as it is."""
+    pairs = getattr(proj, "SAY", [])
+    if not pairs:
+        return text
+    script = "\n\n".join(t for _, t in chapters(proj))
+    # find the span with every character a swap touches masked out, so a text read under an older SAY list still
+    # matches; SAY keeps every length, so the span maps one to one
+    touched = set("".join(w + s for w, s in pairs))
+    mask = lambda t: "".join("\0" if c in touched else c for c in t)
+    ms, mt = mask(script), mask(text)
+    i = ms.find(mt)
+    if i >= 0 and ms.find(mt, i + 1) < 0:
+        return script[i:i + len(text)]
+    for w, s in pairs:   # not a span of the script: undo a swap only where the script has the written word in context
+        j = text.find(s)
+        while j >= 0:
+            cand = text[:j] + w + text[j + len(s):]
+            if cand[max(0, j - 3):j + len(w) + 3] in script:
+                text = cand
+            j = text.find(s, j + len(w))
     return text
 
 

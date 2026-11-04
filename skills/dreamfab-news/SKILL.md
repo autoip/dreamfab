@@ -1,15 +1,16 @@
 ---
 name: dreamfab-news
 description: >
-  Make a short daily vertical news brief with Dreamfab's news line (`news/`, a pilot): English sources first, every
+  Make news with Dreamfab's news line (`news/`): a short daily vertical brief, or a 3-6 minute 16:9 in-depth report.
+  The daily brief: English sources first, every
   number checked against a second source, a script with numbers spelled out, an AI anchor who opens and closes on
   camera (lip-sync of her two parts only), cards for the numbers, subtitles, the show's theme, a cover and SEO copy that
   open on the same hook. Files only: nothing is uploaded or published.
-  Use when the user wants a daily news brief / 新聞 / 每日美股 / 盤前快報 / 一分鐘新聞 / AI 主播, or mentions
+  Use when the user wants a daily news brief / 新聞 / 每日美股 / 盤前快報 / 一分鐘新聞 / AI 主播 / 深度報導 / 深度研究, or mentions
   dreamfab-news, 造夢廠 新聞, 聞.
 ---
 
-# Dreamfab · news (聞・新聞, pilot)
+# Dreamfab · news (聞・新聞)
 
 One folder per show (`projects/<show>/`, settings in `series.py`), one folder per day (`YYYY-MM-DD/`). Everything runs
 through `news/make.py`; read `ROOT/docs/en/news/OVERVIEW.md` before the first day of a new show.
@@ -71,3 +72,30 @@ through `news/make.py`; read `ROOT/docs/en/news/OVERVIEW.md` before the first da
    - the length and the credits spent
    - the spots to listen to
    - the minutes per step (`timing.tsv`)
+
+## Every day, unattended
+
+Only when the user asks for a standing daily run, and after they agree to its time, its daily credits and its privacy:
+`DAILY = dict(at=, days=, latest=)` in `series.py`, then `PY ROOT/news/make.py schedule projects/<show> --dry-run`
+(show it), `schedule`, and `daily projects/<show> --test`. Each day the scheduler runs `news/make.py daily`, and
+Claude Code works through `ROOT/news/daily_prompt.md` (or the show's own `DAILY` `prompt`): no questions, every job
+off-peak, a misread word swapped in `SAY` and re-read once (never a second round), a log at the end. Skipped when it
+starts after `latest`. Read the show's `daily_log.md` when the user asks how it went.
+
+## In-depth reports (深度報導)
+
+A 16:9 report of 3-6 minutes on one story, on the same channel with the same anchor. Read the last section of
+`ROOT/docs/en/news/OVERVIEW.md` first. In short:
+
+1. Research from primary sources (SEC filings, company releases, earnings calls), checked against English media: two
+   sources for every number, and nothing that sources disagree on. Write the script and its sources
+   (`文案_v1.md`) and show them before any credits are spent.
+2. Build it on the explainer line (`explain/`): `script.md` (numbers as words, `SAY` for misread words such as
+   `("光纖", "光仙")`), `project.py` with `IMAGES` (v4, no text or logos), `SHOTS`, `FACTS` (source cards), `TITLE`, `MUSIC`.
+3. The anchor: cut only the opening and closing parts of the narration for lip-sync (31 s at most each, 0.6 s of
+   silence at the end); lay them out 16:9 (title left, anchor right) as `CLIPS`; hold a still for the `GAPS` lead at
+   the start of the opening one.
+4. Data cards as HTML (16:9), a 16:9 cover (tag, date, hook, the anchor's face), SEO with chapter times.
+5. `news/make.py upload` with the show's `series.py` (`CHANNEL`, `YT_TOKEN`, `PRIVACY`, private suggested) and the
+   episode's `day.py` (`FILE`).
+6. Report the link, the length, the credits and the spots to listen to.

@@ -35,7 +35,7 @@ projects/<系列>/
    python dreamfab/aip_runner.py P/jobs/voice_jobs.json [--off-peak]
    python explain/narration.py P check         # 語速、哪幾個字要聽、結尾有沒有少、有沒有鬼打牆
    ```
-   - 常被唸錯的字放進 `SAY`，換成**同樣長度、同音**的常用字（宓妃→伏妃、曹叡→曹銳、二二〇→二二零）；字幕照原文。
+   - 常被唸錯的字放進 `SAY`，換成**同樣長度、同音**的常用字（宓妃→伏妃、曹叡→曹銳、二二〇→二二零）；字幕照原文。做法和實際用過的錯音表見 [AI 唸錯字怎麼辦](../PRONUNCIATION.md)。
    - `check` 用拼音比對文稿和語音辨識，所以同音字不會誤報。列出來的是聽起來不一樣的地方，給耳朵最後確認。
    - 長段落有時會在結尾**鬼打牆**，不停重複最後幾句。`check` 會指出從哪一秒開始；用 `narration.py P cut voice/part2.flac 秒數` 剪掉，缺的句子另外補唸一小段，再寫進 `NARRATION`。
 4. **畫面**：

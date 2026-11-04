@@ -35,7 +35,7 @@ Every batch that costs credits is quoted at full and off-peak price first and wa
    python dreamfab/aip_runner.py P/jobs/voice_jobs.json [--off-peak]
    python explain/narration.py P check         # speed, words to listen to, a missing ending, a voice that loops
    ```
-   - Words the voice tends to misread go in `SAY`: replaced by common characters of **the same length and sound** (宓妃→伏妃, 曹叡→曹銳, 二二〇→二二零). The subtitles keep the original.
+   - Words the voice tends to misread go in `SAY`: replaced by common characters of **the same length and sound** (宓妃→伏妃, 曹叡→曹銳, 二二〇→二二零). The subtitles keep the original. How to find them and the table we use: [when the AI voice misreads a word](../PRONUNCIATION.md).
    - `check` compares script and transcript by pinyin, so homophones never raise an alarm. What it lists sounds different; your ears have the last word.
    - Long parts sometimes **loop at the end**, repeating the last sentences. `check` says from which second. Cut it with `narration.py P cut voice/part2.flac SECONDS`, have the missing sentences read as a short extra part, and list both in `NARRATION`.
 4. **Pictures**:

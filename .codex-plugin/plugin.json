@@ -1,23 +1,24 @@
 {
   "name": "dreamfab",
   "version": "0.9.0",
-  "description": "Dreamfab 造夢廠, an AI agent framework for making video (AutoIP is its first generation engine): one sentence and you direct and produce. Short dramas (script, cast, each character's own voice, edit, subtitles, covers), music videos (storyboard, lip-sync, beat-synced edit, kinetic lyrics, thumbnails), explainers (narration, MOSS-Image paintings with pans and zooms, the MV as the music bed) and ads (products, services and brands in several languages, a look per market, 30 s and 15 s cuts in three sizes), with one shared core for jobs, credits, GPU enhancement, the library and YouTube.",
+  "description": "Dreamfab 造夢廠, an AI agent framework for making video (AutoIP is its first generation engine): one sentence and you direct and produce. Short dramas (script, cast, each character's own voice, edit, subtitles, covers), music videos (storyboard, lip-sync, beat-synced edit, kinetic lyrics, thumbnails), explainers (narration, MOSS-Image paintings with pans and zooms, the MV as the music bed), ads (products, services and brands in several languages, a look per market, 30 s and 15 s cuts in three sizes) and news (a daily one-minute brief with an AI anchor, uploaded unattended, and in-depth reports), with one shared core for jobs, credits, GPU enhancement, the library and YouTube.",
   "author": { "name": "AutoIP" },
   "homepage": "https://github.com/autoip/dreamfab",
   "repository": "https://github.com/autoip/dreamfab",
   "license": "MIT",
-  "keywords": ["dreamfab", "autoip", "ai-video", "short-drama", "vertical-video", "music-video", "explainer", "advertising", "lip-sync", "ffmpeg", "subtitles"],
+  "keywords": ["dreamfab", "autoip", "ai-video", "short-drama", "vertical-video", "music-video", "explainer", "advertising", "news", "lip-sync", "ffmpeg", "subtitles"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Dreamfab 造夢廠",
-    "shortDescription": "AI short dramas, music videos, explainers and ads, one sentence at a time",
+    "shortDescription": "AI short dramas, music videos, explainers, ads and news, one sentence at a time",
     "developerName": "AutoIP",
     "category": "Productivity",
     "defaultPrompt": [
       "Use dreamfab-drama to turn script.md into a short drama",
       "Use dreamfab-mv to turn song.mp3 into a music video",
       "Use dreamfab-explain to make an explainer about my MV",
-      "Use dreamfab-ad to make ads for my product in three languages"
+      "Use dreamfab-ad to make ads for my product in three languages",
+      "Use dreamfab-news to make today's one-minute market brief"
     ]
   }
 }

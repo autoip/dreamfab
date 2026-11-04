@@ -20,6 +20,11 @@ usage: python news/make.py new SERIES [YYYY-MM-DD]       a day folder: day.py fr
        python news/make.py upload DAY [--public|--private]   to series.py's CHANNEL (its own login, YT_TOKEN) with the
                                                         SEO file's title A, description, tags, the subtitles and the
                                                         cover; PRIVACY in series.py, else private; daily cap kept
+       python news/make.py daily SERIES [--test]        today's episode with no one there: Claude Code (claude -p)
+                                                        works through the show's daily instructions end to end;
+                                                        SERIES/logs/DATE.log; --test only checks that Claude starts
+       python news/make.py schedule SERIES [--remove] [--dry-run]   run `daily` at DAILY's time on DAILY's days
+                                                        (local time): Windows Task Scheduler, cron elsewhere
 Every step adds a line to SERIES/timing.tsv (day, step, start, end, minutes): what a daily slot has to fit.
 
 SERIES/series.py (the show; see examples/news/demo):
@@ -31,8 +36,13 @@ SERIES/series.py (the show; see examples/news/demo):
   OPEN = (kicker, title)             the strap over the anchor at the start; CLOSE the one at the end
   FIRST_LINE / LAST_LINE             fixed script lines (spoken｜subtitle｜anchor)
   CTA_LINE, CTA = (kicker, title)    the call to subscribe said last, with its own strap
+  SAY = [("光纖", "光仙"), ...]        same-length, same-sounding swaps for words the voice misreads (read only)
   SUBSCRIBE = dict(button=, line=)   the end card asks for the subscription first, the sponsor under it
   SPONSOR = dict(kicker=, name=, sub=)   the end card, shown once the anchor clip runs out (or END_CARD = a card id)
+  DAILY = dict(at="06:30", days="mon-fri", latest="08:30")   the unattended run (`daily`, `schedule`): its time,
+                                     skipped when it starts after `latest`; prompt= the instructions (default
+                                     news/daily_prompt.md), task= the scheduler's name for it
+  TITLE_PREFIX = "EP{ep}｜"           put before title A on upload; {ep} = the episode folder's number (e05_… -> 5)
 DAY/day.py: DATE, SOURCES, CARDS = {id: html}; row(), bar() and box() are there to build them.
   COVER = dict(lines=[("費半重挫 3.4%", "down"), ("AI 股殺不停？", "gold")], sub="...")   the cover's hook
   SEO = dict(titles=["…", "…"], lead="…", tags=[…])                                 titles open on the same hook
@@ -147,7 +157,18 @@ def load(day):
             exec(open(f, encoding="utf-8").read(), ns)
     rows = [[c.strip() for c in l.split("｜")] for l in open(os.path.join(day, "script.md"), encoding="utf-8").read().splitlines()
             if l.count("｜") == 2 and not l.lstrip().startswith(("#", ">", "每一行"))]
+    for r in rows:
+        r[0] = say(r[0], ns)
     return ns, rows
+
+
+def say(text, d):
+    """SAY = [(written, said)] in series.py or day.py: a same-length, same-sounding swap for a word the voice misreads
+    (光纖 -> 光仙). It changes only what is read; the subtitle column keeps the written word."""
+    for written, said in d.get("SAY", []):
+        assert len(written) == len(said), f"SAY {written}->{said}: both sides must be the same length"
+        text = text.replace(written, said)
+    return text
 
 
 def name_of(day, d):
@@ -195,6 +216,100 @@ def new_day(series, when=None):
              "", "## 資料來源", "- "]
     open(os.path.join(day, "script.md"), "w", encoding="utf-8", newline="\n").write("\n".join(lines) + "\n")
     print(f"{day}: write the news lines between the first and the last line of script.md")
+
+
+# ---- every day, unattended
+DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def daily_settings(series):
+    ns = {}
+    exec(open(os.path.join(series, "series.py"), encoding="utf-8").read(), ns)
+    return dict(dict(at="06:30", days="mon-fri", latest=None, prompt="daily_prompt.md",
+                     task="Dreamfab " + os.path.basename(os.path.abspath(series))), **ns.get("DAILY", {}))
+
+
+def daily(series, test=False):
+    """Make today's episode with no one there. Claude Code (`claude -p`) gets the show's daily instructions (DAILY
+    prompt in the show folder, else news/daily_prompt.md; {DATE}, {SHOW} and {PY} filled in) and works through them,
+    the approvals written there standing in for questions. A start after DAILY latest is skipped: the computer slept
+    through its time, the news would be stale and off-peak over. Claude's output goes to SERIES/logs/DATE.log.
+    --test only checks that Claude starts (no credits)."""
+    cfg, now = daily_settings(series), datetime.now()
+    today = now.date().isoformat()
+    os.makedirs(os.path.join(series, "logs"), exist_ok=True)
+    if not test and cfg["latest"] and now.strftime("%H:%M") > cfg["latest"]:
+        with open(os.path.join(series, "daily_log.md"), "a", encoding="utf-8", newline="\n") as f:
+            f.write(f"\n== {today}: skipped, started {now:%H:%M} (after {cfg['latest']})\n")
+        sys.exit(f"started after {cfg['latest']}: skipped")
+    claude = (os.environ.get("DREAMFAB_CLAUDE") or shutil.which("claude")   # the scheduler's PATH may be shorter
+              or next((p for p in (os.path.expanduser("~/.local/bin/claude" + x) for x in (".exe", ""))
+                       if os.path.isfile(p)), None))
+    if not claude:
+        sys.exit("claude (Claude Code) not found: install it, or set DREAMFAB_CLAUDE to its path")
+    if test:
+        prompt = (f"This is a schedule test. Answer only: today's date, the working directory, and whether "
+                  f"{sys.executable} exists. Do nothing else.")
+    else:
+        p = os.path.join(series, cfg["prompt"])
+        prompt = open(p if os.path.exists(p) else os.path.join(HERE, "daily_prompt.md"), encoding="utf-8").read()
+        for k, v in dict(DATE=today, SHOW=os.path.relpath(os.path.abspath(series), REPO), PY=sys.executable).items():
+            prompt = prompt.replace("{" + k + "}", v.replace(os.sep, "/"))
+    log = os.path.join(series, "logs", today + ("_test" if test else "") + ".log")
+    tools = cfg.get("tools", "Bash,PowerShell,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch")
+    with open(log, "a", encoding="utf-8", newline="\n") as f:
+        f.write(f"== start {now.isoformat(timespec='seconds')}\n")
+        f.flush()
+        r = subprocess.run([claude, "-p", prompt, "--allowedTools", tools], cwd=REPO, stdin=subprocess.DEVNULL,
+                           stdout=f, stderr=subprocess.STDOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8", AIP_MAX="1"))
+        f.write(f"== end {datetime.now().isoformat(timespec='seconds')} exit {r.returncode}\n")
+    print(f"{log} (exit {r.returncode})")
+    return r.returncode
+
+
+def schedule(series, remove=False, dry=False):
+    """Run `daily` at DAILY at (the computer's local time) on DAILY days ("mon-fri", "mon,wed,fri", "daily").
+    Windows: a Task Scheduler task that also starts a missed run once the computer is on (DAILY latest then decides),
+    2 hours at most. Elsewhere: a line in the crontab. --remove takes it away; --dry-run prints it, changes nothing."""
+    cfg = daily_settings(series)
+    d = cfg["days"].lower().replace(" ", "")
+    if d in ("daily", "all"):
+        days = DAYS
+    elif "-" in d and d.count("-") == 1 and set(d.split("-")) <= set(DAYS):
+        a, b = d.split("-")
+        days = DAYS[DAYS.index(a):DAYS.index(b) + 1]
+    else:
+        days = d.split(",")
+    if not days or not set(days) <= set(DAYS) or not re.fullmatch(r"\d{1,2}:\d{2}", cfg["at"]):
+        sys.exit(f'DAILY: at "HH:MM" and days like "mon-fri" (got {cfg["at"]!r}, {cfg["days"]!r})')
+    show, me, task = os.path.abspath(series), os.path.abspath(__file__), cfg["task"]
+    if os.name == "nt":
+        q = lambda x: "'" + x.replace("'", "''") + "'"
+        arg = f'-X utf8 "{me}" daily "{show}"'
+        names = ",".join(("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")[DAYS.index(x)]
+                         for x in days)
+        ps = (f"Unregister-ScheduledTask -TaskName {q(task)} -Confirm:$false" if remove else
+              f"$a = New-ScheduledTaskAction -Execute {q(sys.executable)} -Argument {q(arg)} -WorkingDirectory {q(REPO)}; "
+              f"$t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek {names} -At {cfg['at']}; "
+              f"$s = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries "
+              f"-DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 2); "
+              f"Register-ScheduledTask -TaskName {q(task)} -Action $a -Trigger $t -Settings $s -Force | Out-Null")
+        if dry:
+            print(ps)
+            return
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True)
+    else:
+        hh, mm = cfg["at"].split(":")
+        mark = f"# {task}"
+        line = (f"{int(mm)} {int(hh)} * * {','.join(str((DAYS.index(x) + 1) % 7) for x in days)} "
+                f'cd "{REPO}" && "{sys.executable}" "{me}" daily "{show}" >/dev/null 2>&1 {mark}')
+        old = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout.splitlines()
+        new = [l for l in old if not l.endswith(mark)] + ([] if remove else [line])
+        if dry:
+            print("\n".join(new))
+            return
+        subprocess.run(["crontab", "-"], input="\n".join(new) + "\n", text=True, check=True)
+    print(f"{task}: " + ("removed" if remove else f"{cfg['days']} {cfg['at']} -> news/make.py daily {series}"))
 
 
 # ---- cards
@@ -330,6 +445,12 @@ def upload(day, privacy=None):
     title = re.search(r"^A\. (.+)$", next(v for k, v in sec.items() if k.startswith("標題")), flags=re.M).group(1).strip()
     desc = next(v for k, v in sec.items() if k.startswith("說明欄")).strip()
     tags = [t.strip() for t in next(v for k, v in sec.items() if k.startswith("標籤")).split(",") if t.strip()]
+    if d.get("TITLE_PREFIX"):
+        m = re.match(r"e(\d+)_", os.path.basename(os.path.normpath(day)))
+        if not m and "{ep}" in d["TITLE_PREFIX"]:
+            sys.exit("TITLE_PREFIX has {ep}: name the episode folder eNN_…")
+        pre = d["TITLE_PREFIX"].format(ep=int(m.group(1)) if m else "")
+        title = title if title.startswith(pre) else pre + title
     if len(title) > 100 or len(desc.encode()) > 5000:
         sys.exit(f"title {len(title)} characters (100 at most) or description {len(desc.encode())} bytes (5,000 at most)")
     privacy = privacy or d.get("PRIVACY", "private")
@@ -370,12 +491,17 @@ def upload(day, privacy=None):
         print("  captions", os.path.basename(srt))
     cov = os.path.join(od, f"{name}_cover.jpg")
     if os.path.exists(cov):
-        try:   # the Shorts shelf picks its own frame; search and the watch page use this one
-            yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(cov, mimetype="image/jpeg")).execute()
-            record(vid, "thumbnail", os.path.basename(cov), day, "news")
-            print("  thumbnail", os.path.basename(cov))
-        except HttpError as e:
-            print("  !! thumbnail not set:", getattr(e, "reason", e))
+        for wait in (0, 15, 30, 60):   # a fresh upload can be "not found" for a moment
+            time.sleep(wait)
+            try:   # the Shorts shelf picks its own frame; search and the watch page use this one
+                yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(cov, mimetype="image/jpeg")).execute()
+                record(vid, "thumbnail", os.path.basename(cov), day, "news")
+                print("  thumbnail", os.path.basename(cov))
+                break
+            except HttpError as e:
+                if e.resp.status != 404 or wait == 60:
+                    print("  !! thumbnail not set:", getattr(e, "reason", e))
+                    break
     if d.get("PLAYLIST"):
         yt.playlistItems().insert(part="snippet", body=dict(snippet=dict(
             playlistId=d["PLAYLIST"], resourceId=dict(kind="youtube#video", videoId=vid)))).execute()
@@ -662,7 +788,7 @@ def render(day):
     cd = os.path.join(day, "cards")
     top, top_a = rgba(os.path.join(cd, "_top.png"))
     straps = {k: rgba(os.path.join(cd, f"_{k}.png")) for k in ("open", "close", "cta") if os.path.exists(os.path.join(cd, f"_{k}.png"))}
-    cta_at = starts[-1] if d.get("CTA_LINE") and rows[-1][0] == d["CTA_LINE"].split("｜")[0].strip() else None
+    cta_at = starts[-1] if d.get("CTA_LINE") and rows[-1][0] == say(d["CTA_LINE"].split("｜")[0].strip(), d) else None
     imgs = {s: imread(os.path.join(cd, f"{s}.png")) for _, _, s in shots if s != "anchor"}
     end_id = d.get("END_CARD") or ("_end" if os.path.exists(os.path.join(cd, "_end.png")) else None)
     if end_id:
@@ -734,6 +860,10 @@ if __name__ == "__main__":
     if cmd == "new":
         new_day(target, rest[0] if rest else None)
         sys.exit()
+    if cmd == "daily":
+        sys.exit(daily(target, "--test" in rest))
+    if cmd == "schedule":
+        sys.exit(schedule(target, "--remove" in rest, "--dry-run" in rest))
     steps = dict(cards=lambda: cards(target), cover=lambda: cover(target), seo=lambda: seo(target),
                  upload=lambda: upload(target, "private" if "--private" in rest else "public" if "--public" in rest else None), voice=lambda: voice(target), check=lambda: check(target),
                  anchor=lambda: anchor(target), render=lambda: render(target),

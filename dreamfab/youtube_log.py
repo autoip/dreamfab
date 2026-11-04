@@ -170,8 +170,9 @@ def line_of(project, kind, title=""):
 
 
 def channel_of(project):
-    """The channel a project uploads to: its youtube.json, or the upload plan next to it."""
-    for name in ("youtube.json", "upload_plan.json"):
+    """The channel a project uploads to: its youtube.json (out/youtube.json for the news line), or the upload plan
+    next to it."""
+    for name in ("youtube.json", os.path.join("out", "youtube.json"), "upload_plan.json"):
         try:
             ch = json.load(open(os.path.join(project, name), encoding="utf-8")).get("channel")
         except (OSError, ValueError):

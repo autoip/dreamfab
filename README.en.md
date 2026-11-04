@@ -18,7 +18,7 @@ Dreamfab is a framework that lets AI agents (Claude Code, Codex, and tested with
 | **曲** music video `mv/` | Use dreamfab-mv to turn song.mp3 into a music video | Ready | [MV overview](docs/en/mv/OVERVIEW.md) |
 | **說** explainer `explain/` | Use dreamfab-explain to explain the history behind my MV in 5 minutes | Ready (static B-roll; moving B-roll planned) | [Explainer overview](docs/en/explain/OVERVIEW.md) |
 | **廣** ads `ad/` | Use dreamfab-ad to make ads for my product in Japanese, Korean and English, a different look for each | Ready (products, services, brands; a main cut plus 30 s and 15 s in 16:9, 9:16 and 1:1) | [Ads overview](docs/en/ad/OVERVIEW.md) |
-| **聞** news `news/` | Use dreamfab-news to make today's one-minute US-markets brief | Pilot (a daily one-minute vertical brief: an AI anchor opens and closes, cards, a cover and SEO copy, a call to subscribe; uploads to YouTube, can run unattended every day) | [News overview](docs/en/news/OVERVIEW.md) |
+| **聞** news `news/` | Use dreamfab-news to make today's one-minute US-markets brief; make an in-depth report on why Lumentum took off | Ready (new): a daily one-minute vertical brief (an AI anchor opens and closes, cards, a cover and SEO copy, uploaded unattended every day) and 3-6 minute 16:9 in-depth reports | [News overview](docs/en/news/OVERVIEW.md) |
 | **影** film | — | Later | — |
 
 Each series is a world of its own (`projects/<series>/`); its actors and voices (`cast/`, `voices/`) are cast again across episodes and seasons with the same face and voice.
@@ -39,6 +39,11 @@ Each series is a world of its own (`projects/<series>/`); its actors and voices 
 
 A whole season of MVs: the [《國風淒美對唱》 playlist](https://www.youtube.com/playlist?list=PLfoBI7oPycHg), 6 episodes with one look and packaging, a different genre each.
 
+**News**: market news from the news line, with one AI anchor.
+
+- ▶ A one-minute US-markets brief before the Taiwan open, made and uploaded unattended every day: https://youtu.be/NupJ10Z46xg
+- ▶ An in-depth report, why Lumentum took off and why AI runs on light (3:47): https://youtu.be/SR1r42OAaXg
+
 ## Install
 
 ### On a computer: one line (Claude Code / Codex)
@@ -55,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/autoip/dreamfab/main/install.sh | b
 irm https://raw.githubusercontent.com/autoip/dreamfab/main/install.ps1 | iex
 ```
 
-All three lines are installed by default; for short dramas only, set `DREAMFAB_LINES=drama`. Plugin install, ffmpeg (with libass), fonts and `AUTOIP_API_KEY`: see [SETUP.md](docs/en/SETUP.md).
+Four lines are installed by default (drama, MV, explainer, ads); add `news` for the news line (e.g. `DREAMFAB_LINES=drama,mv,explain,ad,news`); for short dramas only, set `DREAMFAB_LINES=drama`. Plugin install, ffmpeg (with libass), fonts and `AUTOIP_API_KEY`: see [SETUP.md](docs/en/SETUP.md).
 
 **Updating**: run the same line again. Your work and settings stay as they are, and an older version's databases come in by themselves; for plugin installs and your own clone, see [SETUP.md, Updating from an older version](docs/en/SETUP.md#7-updating-from-an-older-version).
 
@@ -82,15 +87,16 @@ That machine has no GPU, and it doesn't matter: generation runs in the AutoIP cl
 | Doc | Contents |
 |---|---|
 | [SETUP.md](docs/en/SETUP.md) | Install, GPU, API key, off-peak pricing, YouTube login, rights to your material, updating from an older version |
-| [Drama](docs/en/drama/OVERVIEW.md)・[MV](docs/en/mv/OVERVIEW.md)・[Explainer](docs/en/explain/OVERVIEW.md) overviews | Each line's workflow, format, editing, publishing, lessons |
+| [Drama](docs/en/drama/OVERVIEW.md)・[MV](docs/en/mv/OVERVIEW.md)・[Explainer](docs/en/explain/OVERVIEW.md)・[Ads](docs/en/ad/OVERVIEW.md)・[News](docs/en/news/OVERVIEW.md) overviews | Each line's workflow, format, editing, publishing, lessons |
 | [The shared core and the library](docs/en/CORE.md) | Series folders, the library page, what each file in `dreamfab/` does |
 | [WORKFLOW.md](docs/en/WORKFLOW.md) | Workflow switches: which steps happen on their own is your call |
 | [GPU_ENHANCE.md](docs/en/GPU_ENHANCE.md) | Local super resolution + frame generation: tools, measured speed and results |
+| [PRONUNCIATION.md](docs/en/PRONUNCIATION.md) | When the AI voice misreads a word: finding it, the swap table `SAY`, what to read again, the table we use |
 | [CONTRIBUTING.en.md](CONTRIBUTING.en.md) | Contributing: what belongs in the repo, de-identification, the check before you send |
 
 ## Where it is going
 
-More generation engines (one line switching engines to compare quality and price), more production lines (film 影, and news 聞 from pilot to launch), and fuller agent automation: from one sentence to publishing, with people stepping in only before spending credits and before going public.
+More generation engines (one line switching engines to compare quality and price), more production lines (film 影) and more news shows, and fuller agent automation: from one sentence to publishing, with people stepping in only before spending credits and before going public.
 
 ## Licence
 

@@ -88,3 +88,4 @@ say "In Claude Code or Codex, try: \"Use dreamfab-drama to turn script.md into a
 say "                          or: \"Use dreamfab-mv to turn song.mp3 into a music video\""
 say "                          or: \"Use dreamfab-explain to make an explainer about my MV\""
 say "                          or: \"Use dreamfab-ad to make ads for my product in three languages\""
+say "                          or: \"Use dreamfab-news to make today's one-minute market brief\" (DREAMFAB_LINES=...,news)"
