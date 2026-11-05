@@ -65,7 +65,7 @@ Every batch that costs credits is quoted at full and off-peak price first and wa
    - `frame`: the whole picture in a gold frame, for covers with lettering
    - `scroll`: a handscroll drawn on white, cut out and panned right to left
 
-   Subtitles, picture changes and chapter labels all follow the narration's timing.
+   Subtitles, picture changes and chapter labels all follow the narration's timing. A subtitle wider than about three quarters of the picture (about 32 Chinese characters at size 56) breaks into two lines, at the comma nearest its middle, else at a space.
 
    **The user picks the subtitle look**: `sub_styles.py` sets the 4 looks (white with a thin dark edge, ivory with a thick dark-brown edge, plus a gold rim, a soft dark band) in every font in `FONT`'s folder on the episode's lightest and darkest pictures, one sheet (`out/subtitle_styles.jpg`). Show it, then write the pick into `project.py`, e.g. `SUBS = dict(style="band", font="DFKai-SB", size=66)` (the band with DFKai-SB, Windows' `kaiu.ttf`, which you copy into fonts/ yourself). Without `SUBS` it is white with a thin dark edge. On light paintings (gongbi, ink) the band reads best.
 7. **Cover**: use `mv/thumbkit.py` with pictures from the episode and big lettering (see `examples/mv/demo/thumbs.py`), or have v4 paint the cover with its title through a Layout in `IMAGES`.

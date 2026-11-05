@@ -330,20 +330,20 @@ def build():
         b = round(16 * size / 64)   # the box's padding grows with the letters; a dark box 5 px larger behind it is the outline
         ass.append(f"Dialogue: 3,{at}\\bord{b + 5}\\3c&H222222&\\1c&H222222&{pop}}}{st['text']}")
         ass.append(f"Dialogue: 4,{at}\\bord{b}\\shad0\\3c{bgr(col)}\\1c{bgr(ink)}{pop}}}{st['text']}")
-    if vert:   # a line too wide for the phone breaks in two, at a comma near its middle if there is one
-        def fit(s, n=13):
-            """Latin letters and spaces count about half a character. Break after a comma, else at a space (Korean),
-            else anywhere but inside a word in Latin letters."""
-            wide = [0.55 if ord(c) < 128 else 1.0 for c in s]
-            if sum(wide) <= n:
-                return s
-            half = sum(wide) / 2
-            at = lambda k: abs(sum(wide[:k]) - half)
-            word = lambda c: c.isascii() and c.isalnum()
-            cut = min([k + 1 for k, c in enumerate(s) if c in "，、：," and 3 < k < len(s) - 3]
-                      or [k for k, c in enumerate(s) if c == " " and 2 < k < len(s) - 2]
-                      or [k for k in range(2, len(s) - 1) if not (word(s[k - 1]) and word(s[k]))], key=at)
-            return s[:cut].rstrip() + "\\N" + s[cut:].lstrip()
+    def fit(s, n=13):   # a line too wide for the screen breaks in two, at a comma near its middle if there is one
+        """Latin letters and spaces count about half a character. Break after a comma, else at a space (Korean),
+        else anywhere but inside a word in Latin letters."""
+        wide = [0.55 if ord(c) < 128 else 1.0 for c in s]
+        if sum(wide) <= n:
+            return s
+        half = sum(wide) / 2
+        at = lambda k: abs(sum(wide[:k]) - half)
+        word = lambda c: c.isascii() and c.isalnum()
+        cut = min([k + 1 for k, c in enumerate(s) if c in "，、：," and 3 < k < len(s) - 3]
+                  or [k for k, c in enumerate(s) if c == " " and 2 < k < len(s) - 2]
+                  or [k for k in range(2, len(s) - 1) if not (word(s[k - 1]) and word(s[k]))], key=at)
+        return s[:cut].rstrip() + "\\N" + s[cut:].lstrip()
+    if vert:
         # bilingual lines run to three or four rows: hang them from just under the picture so they grow downwards
         hang = f"{{\\an8\\pos({OW // 2},{pic_y + pic_h + 36})}}" if tr or aspect == "1:1" else ""
         ass += sub_events(sub, [(a, b, hang + both(fit(s), t2 and fit(t2, 16))) for a, b, s, t2 in subs], OW, OH)
@@ -352,8 +352,9 @@ def build():
             hy, hs = (24, "\\fs52") if aspect == "1:1" else (230 if layout == "square" else 250, "")
             ass.append(f"Dialogue: 1,{ass_time(0)},{ass_time(total)},Head,,0,0,0,,{{\\fad(300,600)\\an8{hs}\\pos({OW // 2},"
                        f"{hy})}}{head}")
-    else:
-        ass += sub_events(sub, [(a, b, both(s, t2)) for a, b, s, t2 in subs], W, H)
+    else:   # a Chinese character is about 0.8 of the font size wide: a line longer than 3/4 of the picture breaks in two
+        n = int(0.75 * W / (0.8 * sub["size"]))
+        ass += sub_events(sub, [(a, b, both(fit(s, n), t2 and fit(t2, int(n / 0.72)))) for a, b, s, t2 in subs], W, H)
     for t0, name in chaps if getattr(proj, "CHAPTER_LABELS", True) else []:   # an ad of 30 s needs no chapter names
         st = 0.5 if t0 < LEAD + 1 else t0 - 0.2
         ass.append(f"Dialogue: 0,{ass_time(st)},{ass_time(st + 4.5)},Chap,,0,0,0,,{{\\fad(400,500)}}{name}")

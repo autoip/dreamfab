@@ -42,7 +42,10 @@ SERIES/series.py (the show; see examples/news/demo):
   DAILY = dict(at="06:30", days="mon-fri", latest="08:30")   the unattended run (`daily`, `schedule`): its time,
                                      skipped when it starts after `latest`; prompt= the instructions (default
                                      news/daily_prompt.md), task= the scheduler's name for it
-  TITLE_PREFIX = "EP{ep}｜"           put before title A on upload; {ep} = the episode folder's number (e05_… -> 5)
+  ROTA = {"fri": dict(ANCHOR="cast/ANCHOR_D.png", VOICE="voices/ANCHOR_D.wav"), "2026-11-05": dict(...)}
+                                     another anchor (or any setting) on a weekday or a date; a date wins
+  TITLE_PREFIX = "EP{ep}｜"           put before the titles (SEO file, upload); {ep} = the episode folder's number
+                                     (e05_… -> 5), {date} = the day folder's date as M/D ("{date}｜" -> 11/5｜)
 DAY/day.py: DATE, SOURCES, CARDS = {id: html}; row(), bar() and box() are there to build them.
   COVER = dict(lines=[("費半重挫 3.4%", "down"), ("AI 股殺不停？", "gold")], sub="...")   the cover's hook
   SEO = dict(titles=["…", "…"], lead="…", tags=[…])                                 titles open on the same hook
@@ -150,9 +153,15 @@ def series_of(day):
 
 
 def load(day):
-    """(settings, script rows): series.py, then day.py over it; rows = [spoken, subtitle, picture]."""
+    """(settings, script rows): series.py, then ROTA for the day's weekday and date, then day.py over it;
+    rows = [spoken, subtitle, picture]."""
     ns = dict(row=row, bar=bar, box=box)
     for f in (os.path.join(series_of(day), "series.py"), os.path.join(day, "day.py")):
+        if f.endswith("day.py"):
+            when = os.path.basename(os.path.abspath(day))
+            weekday = DAYS[datetime.strptime(when, "%Y-%m-%d").weekday()] if re.fullmatch(r"\d{4}-\d\d-\d\d", when) else None
+            for k in (weekday, when):   # a guest anchor on a weekday, then on a date
+                ns.update(ns.get("ROTA", {}).get(k, {}))
         if os.path.exists(f):
             exec(open(f, encoding="utf-8").read(), ns)
     rows = [[c.strip() for c in l.split("｜")] for l in open(os.path.join(day, "script.md"), encoding="utf-8").read().splitlines()
@@ -174,6 +183,27 @@ def say(text, d):
 def name_of(day, d):
     stamp = re.sub(r"\D", "", os.path.basename(os.path.abspath(day)))
     return d.get("FILE") or f"{d.get('NAME', 'news')}_{stamp}"
+
+
+def titled(title, day, d):
+    """The title with series.py's TITLE_PREFIX in front: {ep} = the episode folder's number (e05_… -> 5), {date} = the
+    day folder's date as M/D (2026-11-05 -> 11/5). Left alone when it is there already; a date still at the end
+    (「…｜美股一分鐘 11/5」) moves to the front."""
+    pre, base = d.get("TITLE_PREFIX"), os.path.basename(os.path.normpath(day))
+    if not pre:
+        return title
+    ep, iso = re.match(r"e(\d+)_", base), re.fullmatch(r"\d{4}-(\d\d)-(\d\d)", base)
+    if "{ep}" in pre and not ep:
+        sys.exit("TITLE_PREFIX has {ep}: name the episode folder eNN_…")
+    if "{date}" in pre and not iso:
+        sys.exit("TITLE_PREFIX has {date}: name the day folder YYYY-MM-DD")
+    md = f"{int(iso.group(1))}/{int(iso.group(2))}" if iso else ""
+    pre = pre.format(ep=int(ep.group(1)) if ep else "", date=md)
+    if title.startswith(pre):
+        return title
+    if "{date}" in d["TITLE_PREFIX"]:
+        title = re.sub(rf"\s*{re.escape(md)}$", "", title)
+    return pre + title
 
 
 def sp(day, *parts):
@@ -410,15 +440,16 @@ def seo(day):
     body = [s.get("lead", ""), ""] + [f"・{r[1]}" for r in rows if r[2] != "anchor"] + [
         "", strip(d.get("SOURCES", "")), d.get("SEO_FOOT", "")]
     tags = list(dict.fromkeys(list(s.get("tags", [])) + list(d.get("SEO_TAGS", []))))
+    titles = [titled(t, day, d) for t in s["titles"]]
     txt = ("==================== 標題（擇一，建議 A） ====================\n"
-           + "\n".join(f"{chr(65 + k)}. {t}" for k, t in enumerate(s["titles"]))
+           + "\n".join(f"{chr(65 + k)}. {t}" for k, t in enumerate(titles))
            + "\n\n==================== 說明欄 ====================\n" + "\n".join(body).strip() + "\n"
            + " ".join("#" + t.replace(" ", "") for t in list(s.get("tags", []))[:4] + list(d.get("SEO_TAGS", []))[:4])
            + "\n\n==================== 標籤 ====================\n" + ", ".join(tags) + "\n")
     out = os.path.join(day, "out", f"{name_of(day, d)}_SEO.txt")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, "w", encoding="utf-8", newline="\n").write(txt)
-    long = [t for t in s["titles"] if len(t) > 60]
+    long = [t for t in titles if len(t) > 60]
     print(out + ("" if not long else f"  !! {len(long)} title(s) over 60 characters: the hook may be cut off"))
 
 
@@ -445,12 +476,7 @@ def upload(day, privacy=None):
     title = re.search(r"^A\. (.+)$", next(v for k, v in sec.items() if k.startswith("標題")), flags=re.M).group(1).strip()
     desc = next(v for k, v in sec.items() if k.startswith("說明欄")).strip()
     tags = [t.strip() for t in next(v for k, v in sec.items() if k.startswith("標籤")).split(",") if t.strip()]
-    if d.get("TITLE_PREFIX"):
-        m = re.match(r"e(\d+)_", os.path.basename(os.path.normpath(day)))
-        if not m and "{ep}" in d["TITLE_PREFIX"]:
-            sys.exit("TITLE_PREFIX has {ep}: name the episode folder eNN_…")
-        pre = d["TITLE_PREFIX"].format(ep=int(m.group(1)) if m else "")
-        title = title if title.startswith(pre) else pre + title
+    title = titled(title, day, d)
     if len(title) > 100 or len(desc.encode()) > 5000:
         sys.exit(f"title {len(title)} characters (100 at most) or description {len(desc.encode())} bytes (5,000 at most)")
     privacy = privacy or d.get("PRIVACY", "private")

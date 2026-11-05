@@ -124,7 +124,7 @@ python news/make.py seo   DAY        # out/<NAME>_SEO.txt
   - The sections are laid out like the other lines' `YouTube_SEO.txt`. In the pilot nothing is published; it is a file.
 
 ### 5. Asking for the subscription
-`CTA_LINE` in `series.py` is the anchor's last line, e.g. 「記得訂閱，每天開盤前看美股一分鐘，養成習慣，掌握財金動脈！」:
+`CTA_LINE` in `series.py` is the anchor's last line, e.g. 「記得訂閱，每天開盤前看美股一分鐘，養成習慣！」:
 - `new` puts it last in every script.
 - While she says it, the strap changes to `CTA`.
 - The end card leads with a subscribe button and the `SUBSCRIBE` line, with the sponsor below.
@@ -178,6 +178,7 @@ What it does:
   - Credits are no reason to skip it, but it is done once, never in a loop; what still sounds off goes in the log for a person to hear.
   - An English name the recogniser writes another way does not count. A narration cut off at the end gets its last line read again the same way.
 - **A missed start runs late, a late one is skipped**: Windows starts a run the computer slept through once it is on; a start after `latest` is skipped with a line in the log, so stale news is not made at full price after the off-peak window.
+- **Another anchor on some days**: `ROTA` in `series.py` swaps the anchor by weekday or date (e.g. `{"fri": dict(ANCHOR=..., VOICE=...)}`, a date first), and the schedule runs as usual.
 - **No news, no episode**: weekends and market holidays get one line with the reason. Monday covers Friday's close.
 - **No duplicates, the cap kept**: `out/youtube.json` keeps the video id, so a rerun does not upload twice; each channel's daily cap still holds.
 - **It stops on an error**: a failed step is retried once; if it fails again the run stops and logs the step and the message. Never a half-made upload.
@@ -207,4 +208,5 @@ The same channel and anchor take one story all the way, e.g. "Why Lumentum took 
 - **Upload**: give the show a `series.py` (`CHANNEL`, `YT_TOKEN`, `PRIVACY`) and the episode folder a `day.py` with `FILE`, and `news/make.py upload` takes it.
   - In-depth reports are not urgent, so `PRIVACY = "private"` is suggested: upload privately, publish after a look.
   - The episode number goes first in the title: `TITLE_PREFIX = "EP{ep}｜"`, `{ep}` being the episode folder's number (`e05_…` gives `EP5｜`); a title in the SEO file that already has it is left alone.
+  - A daily show puts the date first: `TITLE_PREFIX = "{date}｜"`, `{date}` being the day folder's date (`2026-11-05` gives `11/5｜`); `seo` adds it when it writes the SEO file, and a date left at the end of a title moves to the front.
 - **Credits** (first episode, measured): narration in two parts 100, ten pictures 200, two lip-syncs 100: 400 submitted now, half off-peak.
