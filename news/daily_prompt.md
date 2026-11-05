@@ -25,7 +25,8 @@ Task: make today's episode of the show in {SHOW} with Dreamfab's news line, and 
      same-length swap in common characters that sound the same into series.py's SAY, then `redo DAY FIRST LAST` →
      `submit DAY redo --off-peak` → `splice DAY FIRST LAST` for those lines. Do it without holding back on credits,
      but once only: no second round. Whatever still sounds off goes in the log for the user to listen to.
-   - The narration cut off at the end (the last words missing in `check`): re-read the last line the same way.
+   - The narration cut off at the end (the last words missing in `check`; every job ends with a throwaway line that
+     `check` cuts off by itself, so this is rare): re-read the last line the same way.
 5. `anchor` → `submit DAY lipsync --off-peak` → `render`; look at a few frames (the cover, the anchor, cards, the end).
 6. `upload DAY`.
 7. Append to {SHOW}/daily_log.md: the date, the link, the length, the credits spent, minutes per step (timing.tsv),

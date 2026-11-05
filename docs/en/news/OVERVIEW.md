@@ -94,6 +94,7 @@ python news/make.py anchor DAY                       # only the anchor's two par
 python news/make.py submit DAY lipsync --off-peak    # lip-sync
 python news/make.py render DAY
 ```
+- **The narration ends with a throwaway "謝謝收看"**: the voice service cuts off the last moment of what it reads, often half of the final syllable. What it cuts off is the throwaway line: the first `check` (or timing) ends the file at the pause before it and keeps the file as it came as `voice/narr_raw.flac`. A re-read `redo.flac` gets the same.
 - **Lip-sync gets only the anchor's two parts** (opening and close, about 8 s together): three times faster than the whole narration, same credits.
   - Lip-sync clips usually come back half a second short, so the audio sent gets 0.6 s of silence at the end.
   - Where the clip runs out, the full-screen sponsor card takes over.
@@ -176,7 +177,7 @@ What it does:
 - **Narrow permissions**: the shell, file reads and writes, search and the web only (`DAILY` `tools` to change it), one job at a time (`AIP_MAX=1`), every job off-peak (half price).
 - **A misread word is fixed once**: when `check` lists a word read wrong, a common word that sounds the same goes into `SAY` and those lines are read again and spliced in.
   - Credits are no reason to skip it, but it is done once, never in a loop; what still sounds off goes in the log for a person to hear.
-  - An English name the recogniser writes another way does not count. A narration cut off at the end gets its last line read again the same way.
+  - An English name the recogniser writes another way does not count. A narration cut off at the end (before the throwaway line) gets its last line read again the same way.
 - **A missed start runs late, a late one is skipped**: Windows starts a run the computer slept through once it is on; a start after `latest` is skipped with a line in the log, so stale news is not made at full price after the off-peak window.
 - **Another anchor on some days**: `ROTA` in `series.py` swaps the anchor by weekday or date (e.g. `{"fri": dict(ANCHOR=..., VOICE=...)}`, a date first), and the schedule runs as usual.
 - **No news, no episode**: weekends and market holidays get one line with the reason. Monday covers Friday's close.

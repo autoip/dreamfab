@@ -7,7 +7,8 @@ usage: python news/make.py new SERIES [YYYY-MM-DD]       a day folder: day.py fr
        python news/make.py cards DAY                    draw the cards (HTML in Edge/Chrome, no credits)
        python news/make.py cover DAY                    out/<NAME>_cover.jpg: the hook over the anchor, her face kept clear
        python news/make.py seo DAY                      out/<NAME>_SEO.txt: hook titles, description, tags (not published)
-       python news/make.py voice DAY                    jobs/voice.json: the whole narration in one job
+       python news/make.py voice DAY                    jobs/voice.json: the whole narration in one job, ending with a
+                                                        throwaway line that is cut off at the pause before it
        python news/make.py submit DAY voice|lipsync|redo [--off-peak]   run that job file (dreamfab/aip_runner.py)
        python news/make.py check DAY                    transcribe voice/narr.flac; list words heard differently
        python news/make.py anchor DAY                   only the anchor's lines -> voice/anchor_in.wav (+0.6 s of
@@ -554,9 +555,13 @@ def write_jobs(day, name, jobs):
 
 
 def clone_job(day, d, jid, text, out):
-    return dict(id=jid, endpoint="/voice/clone", fields=dict(text=text, **d.get("VOICE_FIELDS", {})),
+    """A narration job. It ends with a throwaway line after a paragraph break (explain/common.py TAIL): the voice
+    service cuts off the last moment of what it reads, and cut_tail ends the file at the pause before that line."""
+    from common import TAIL
+    tail = TAIL["zh"]
+    return dict(id=jid, endpoint="/voice/clone", fields=dict(text=text + "\n\n" + tail, **d.get("VOICE_FIELDS", {})),
                 files=dict(reference_audio=os.path.abspath(sp(day, d["VOICE"])).replace("\\", "/")),
-                out=os.path.abspath(out).replace("\\", "/"))
+                out=os.path.abspath(out).replace("\\", "/"), tail=tail)
 
 
 def voice(day):
@@ -583,8 +588,55 @@ def submit(day, which, off_peak):
 
 
 # ---- timing in the narration
+def cut_tail(day, f):
+    """voice/F as it came back ends with the job's throwaway line (clone_job): keep it as F_raw.flac and make F end at
+    the pause before that line, with its word times. Done once per submitted job (voice/F.cut.json keeps the task id),
+    so a splice into F later is left alone. Jobs without a throwaway line (before 11/05) are not touched."""
+    import soundfile as sf
+    from common import align, pause_after, transcribe, words_path, PUNCT
+    path = os.path.join(day, "voice", f)
+    job = next((j for jf in sorted(glob.glob(os.path.join(day, "jobs", "*.json")))
+                for j in json.load(open(jf, encoding="utf-8")) if os.path.basename(j.get("out", "")) == f and j.get("tail")), None)
+    if not job or not os.path.exists(path):
+        return
+    st = os.path.join(day, "jobs", ("redo" if job["id"] == "redo" else "voice") + ".json.state")
+    task = json.load(open(st)).get(job["id"], {}).get("uuid") if os.path.exists(st) else None
+    side = os.path.splitext(path)[0] + ".cut.json"
+    if os.path.exists(side) and json.load(open(side)).get("task") == task:
+        return
+    raw = os.path.splitext(path)[0] + "_raw.flac"
+    if os.path.exists(raw):   # an earlier take
+        os.replace(raw, os.path.splitext(raw)[0] + "_prev.flac")
+    os.replace(path, raw)
+    for p in (words_path(raw), words_path(path)):   # timings of an earlier take
+        if os.path.exists(p):
+            os.remove(p)
+    transcribe([raw], language="zh")
+    w = json.load(open(words_path(raw), encoding="utf-8"))
+    full = job["fields"]["text"]
+    text = full[:-len(job["tail"])].rstrip()
+    ct, _ = align(full, w["words"])
+    last = ct[max(i for i, c in enumerate(text) if c not in PUNCT)]
+    gap = pause_after(raw, last[0] - 0.05)
+    if gap:
+        cut = min(gap[0] + 0.06, (gap[0] + gap[1]) / 2)
+    else:
+        cut = min(w["duration"], last[1] + 0.12)
+        print(f"  !! {f}: no pause before the throwaway line; cut at {cut:.2f} s: listen to the ending")
+    x, sr = sf.read(raw)
+    x = x[:int(cut * sr)].copy()
+    fade = min(len(x), int(0.015 * sr))
+    x[len(x) - fade:] *= np.linspace(1, 0, fade) if x.ndim == 1 else np.linspace(1, 0, fade)[:, None]
+    sf.write(path, x, sr)
+    words = [[t, a, min(b, cut)] for t, a, b in w["words"] if a < cut]
+    json.dump(dict(duration=cut, words=words), open(words_path(path), "w", encoding="utf-8"), ensure_ascii=False)
+    json.dump(dict(task=task, cut=round(cut, 3), raw=os.path.basename(raw)), open(side, "w"))
+    print(f"  {f}: ends at {cut:.2f} s, before the throwaway line ({w['duration'] - cut:.2f} s cut; as it came: {os.path.basename(raw)})")
+
+
 def transcribe_narr(day, f="narr.flac"):
     from common import transcribe, words_path
+    cut_tail(day, f)
     path = os.path.join(day, "voice", f)
     if not os.path.exists(words_path(path)):
         transcribe([path], language="zh")
@@ -698,6 +750,7 @@ def splice(day, first, last):
     segs, end = seg_starts(day, rows)
     starts = [g[0] for g in segs]
     vd = os.path.join(day, "voice")
+    cut_tail(day, "redo.flac")
     cur, sr = sf.read(os.path.join(vd, "narr.flac"))
     new, sr2 = sf.read(os.path.join(vd, "redo.flac"))
     if sr != sr2:
