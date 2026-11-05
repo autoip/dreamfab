@@ -119,7 +119,7 @@ python news/make.py seo   DAY        # out/<NAME>_SEO.txt
 - **封面**（`day.py` 的 `COVER`）：
   - 主播照片往下移，臉保持在畫面正中間，不被字蓋到。
   - 最上面是黃底大字日期（`DATE` 轉成「11/3 週二」，或自己寫 `COVER_DATE`）：每天一集，縮到手機上的小圖也要看得到是哪一天。
-  - Shorts 架上和頻道的 Shorts 分頁顯示的是影片的第一個畫面，不是上傳的縮圖，所以要搭配 `COVER_FRAME`，並且先做 `cover` 再 `render`。
+  - 上傳的縮圖現在頻道的 Shorts 分頁也會顯示（2026-11 用 API 換過縮圖，分頁跟著換）。滑 Shorts 時看到的還是影片本身，所以仍要搭配 `COVER_FRAME`，讓第一個畫面就是封面，並且先做 `cover` 再 `render`。
   - 上方放兩行大字鉤子：第一行是最大的數字（漲紅跌綠），第二行是問句。
   - 下方一行放第二、第三則重點。
 - **SEO**（`day.py` 的 `SEO`）：
