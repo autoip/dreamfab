@@ -5,6 +5,7 @@ Inside:
   <line>_<table>   a library's tables with a `series` column (the series folder), e.g. drama_episodes, mv_shots
   probe            the ffprobe cache by absolute path, shared by every library
   youtube_log      every step on YouTube (dreamfab/youtube_log.py)
+  marks            what a person decided about a piece: 留下, 不留, 待看, by its folder (dreamfab/marks.py)
 A library builds its index in memory exactly as before (scratch()), and store() swaps that series' rows in, in one
 transaction. open_index() gives a connection whose temporary views carry the line's own table names (episodes, shots
 ...) and show one series, so the libraries' queries read as they always did.

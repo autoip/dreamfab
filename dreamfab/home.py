@@ -1,10 +1,12 @@
 """The library's front page (dreamfab/library.py serves it at /): Dreamfab as a factory floor.
 
-產線: one conveyor per production line (戲 短劇, 曲 MV, 說 解說; 影 and 聞 are still to come) with its stations up to
+產線: one conveyor per production line (戲 短劇, 曲 MV, 說 解說, 廣 廣告; 影 is still to come, 聞 has a row of its own) with its stations up to
 the cover; an episode still being made sits at the first station it has not passed, and leaves the line for the
 warehouse once it has a cut and a cover. A line with work on it runs (rollers turn, parcels ride into the warehouse,
 busy stations blink); an idle one only turns slowly. 倉庫: a rack per series and a shelf per season, every episode standing on it
-by its cover, marked uploaded (▶) or waiting to go up (待上架); one still on a line keeps an empty slot. 散件區: the
+by its cover, marked uploaded (▶) or waiting to go up (待上架); one still on a line keeps an empty slot. A chip at a box's
+top left is what a person decided about it, apart from YouTube (dreamfab/marks.py: 留下, 不留, 待看; a click changes it,
+posted to the library's /mark): 不留 is not counted as 待上架 or as stock, and takes a piece off its line. 散件區: the
 folders that are not a series yet. 庫存與出貨: per line, what is made but not uploaded, uploaded but not public, and
 public (as youtube_log.py sync last saw it), and per channel what went out each day against the youtube.daily_max cap.
 出貨紀錄: the latest entries of the YouTube log (dreamfab/youtube_log.py: uploads, publishing, comments, end screens,
@@ -17,7 +19,7 @@ import html, json, os, re, sqlite3, urllib.parse
 from datetime import date, timedelta
 
 import pages as explain_pages   # explain/pages.py; dreamfab/library.py puts explain/ on the path
-from dreamfab import youtube_log   # pages.py puts the repo root on the path
+from dreamfab import marks, youtube_log   # pages.py puts the repo root on the path
 from dreamfab.db import has_index, open_index
 from dreamfab.workflow import get as workflow
 
@@ -29,7 +31,9 @@ LINES = (   # key, plate, name, stations, how to start one
     ("explain", "說", "解說", ("文案", "旁白", "畫面", "剪輯", "封面"), "用 dreamfab-explain 把一支 MV 背後的歷史做成解說"),
     ("ad", "廣", "廣告", ("簡報", "文案", "旁白", "畫面", "剪輯"), "用 dreamfab-ad 把產品做成多國語言的廣告"),
 )
-SOON = (("影", "電影"), ("聞", "新聞"))
+SOON = (("影", "電影", "規劃中・新產線只要寫自己的流程和 skill，生成引擎和共用核心直接用"),
+        ("聞", "新聞", "試播・每天一集的節目一天一個資料夾，在下面的散件區當一般檔案看；深度報導用解說線的格式，排在「說」那條・"
+                     "開一集跟 agent 說 <code>用 dreamfab-news 做今天的美股一分鐘</code>"))   # 新聞 has no conveyor of its own (yet)
 RACK = {"drama": "A", "mv": "B", "explain": "C", "ad": "D"}   # rack codes, one letter per line
 TALL = {"drama"}                                    # lines whose covers are vertical (9:16)
 
@@ -109,6 +113,9 @@ a.box:hover img{transform:translateY(-4px)}
 .box .cap{display:block;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tag{position:absolute;top:4px;right:4px;font-size:10.5px;font-weight:600;border-radius:10px;padding:0 6px;background:var(--doing-bg);color:var(--doing)}
 .tag.ok{background:var(--ok);color:#fff}.tag.old{background:var(--chip);color:var(--sub)}
+.mk{position:absolute;top:4px;left:4px;font-size:10.5px;font-weight:600;border-radius:10px;padding:0 6px;cursor:pointer;background:rgba(0,0,0,.55);color:#fff;z-index:1}.mk.m-none{opacity:0}.box:hover .mk.m-none,.mk.m-none:focus{opacity:.9}
+.mk.m-keep{background:var(--ok)}.mk.m-review{background:var(--doing);color:var(--on)}.mk.m-drop{background:var(--sub);color:var(--on)}.mk.err{outline:2px solid var(--accent)}
+.box.drop img,.box.drop .ph{opacity:.35;filter:grayscale(1)}.box.drop .cap{text-decoration:line-through;color:var(--sub)}
 .loose{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
 .loose a{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;color:var(--ink);text-decoration:none;font-size:13px}
 .loose a:hover{border-color:var(--accent)}.loose img,.loose .noimg{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--chip)}
@@ -151,15 +158,17 @@ def rows(line, series, sql):
         return []
 
 
-def item(tier, order, short, long, href, cover, done, progress=None, dur=None, uploaded=False, old=False):
+def item(tier, order, short, long, href, cover, done, progress=None, dur=None, uploaded=False, old=False, where=None):
     """One episode: done is a flag per station; progress {station: (have, of)}; it is on a line until it has a cut and
     a cover (old: made before its line kept project folders, never on a line). It stands at the station after the last
-    one it has passed (shots without a script file are still at 生成), or else at the first one it has not."""
+    one it has passed (shots without a script file are still at 生成), or else at the first one it has not. where: the
+    episode folder, which its mark (dreamfab/marks.py) is kept under."""
     at = max((i + 1 for i, d in enumerate(done) if d), default=0)
     if at >= len(done):
         at = next((i for i, d in enumerate(done) if not d), len(done))
     return dict(tier=tier, order=order, short=short, long=long, href=href, cover=cover, done=done, progress=progress or {},
-                dur=dur, uploaded=uploaded, old=old, wip=not old and not (done[3] and done[4]), at=at)
+                dur=dur, uploaded=uploaded, old=old, wip=not old and not (done[3] and done[4]), at=at,
+                key=marks.key(where) if where else None, mark="")
 
 
 def drama(path, base):
@@ -176,7 +185,7 @@ def drama(path, base):
         out.append(item(f'S{season}・{r["title"]}', (season, comp, n), "合集" if comp else f'{n:02d} {r["label"]}',
                         f"S{season} 合集" if comp else f'S{season}E{n:02d} {r["label"]}', base + "ep/" + Q(r["folder"]),
                         os.path.join(path, pic) if pic else None, done, {2: (r["clips"], shots)} if shots else {},
-                        r["main_dur"], bool(r["video_id"])))
+                        r["main_dur"], bool(r["video_id"]), where=os.path.join(path, r["folder"])))
     return out
 
 
@@ -193,7 +202,7 @@ def mv(path, base):
         out.append(item(f"第 {s} 季" if s else "其他", (s or 99, n, r["folder"]), r["label"].replace("_", "・"),
                         f'S{s}E{n} {r["label"].replace("_", "・")}', base + "ep/" + Q(r["folder"]),
                         os.path.join(path, r["cover"]) if r["cover"] else None, done, {2: (clips, shots)} if shots else {},
-                        r["full_dur"], bool(r["video_id"]), old))
+                        r["full_dur"], bool(r["video_id"]), old, where=os.path.join(path, r["folder"])))
     return out
 
 
@@ -208,12 +217,11 @@ def explain(path, base):
         nv, ni = len(ep["parts"]), len(ep["images"])
         dv = sum(1 for x in ep["parts"] if any(v.startswith(x) for v in ep["voice"]))
         di = sum(1 for x in ep["images"] if x[3])
-        thumb = next((t for t in ep["thumbs"] if t.startswith("thumb_A")), ep["thumbs"][0] if ep["thumbs"] else None)
-        pic = os.path.join(p, "thumbnails", thumb) if thumb else next((os.path.join(p, x[3]) for x in ep["images"] if x[3]), None)
+        pic = os.path.join(p, ep["cover"]) if ep["cover"] else next((os.path.join(p, x[3]) for x in ep["images"] if x[3]), None)
         name = ep["mv"] or d.split("_", 1)[-1]
         out.append(item("每一集", (ep["num"],), f'#{ep["num"]:02d} {name}', f'#{ep["num"]:02d} {name}', base + Q(d) + "/", pic,
-                        [bool(ep["script"]), nv > 0 and dv == nv, ni > 0 and di == ni, bool(ep["cut"]), bool(ep["thumbs"])],
-                        {1: (dv, nv), 2: (di, ni)}, ep["length"], bool(ep["yt"].get("id"))))
+                        [bool(ep["script"]), nv > 0 and dv == nv, ni > 0 and di == ni, bool(ep["cut"]), bool(ep["cover"])],
+                        {1: (dv, nv), 2: (di, ni)}, ep["length"], bool(ep["yt"].get("id")), where=p))
     return out
 
 
@@ -236,7 +244,7 @@ def ad(path, base):
         pic = os.path.join(p, "images", "hero.png") if "hero.png" in imgs else os.path.join(p, "images", imgs[0]) if imgs else None
         out.append(item("每個市場", (d,), d, f"{d}（{get('STYLE', '?')}）", base + Q(d) + "/", pic,
                         [os.path.exists(os.path.join(path, "brief.md")), os.path.exists(os.path.join(p, script)), voice,
-                         bool(imgs), os.path.exists(cut)]))
+                         bool(imgs), os.path.exists(cut)], where=p))
     return out
 
 
@@ -266,7 +274,8 @@ def stock_panel(racks, paths):
     for line, name, href, items in racks:
         r = rows.get(names.get(line))
         if r:
-            r["made"][0] += sum(1 for it in items if it["done"][3] and not (it["uploaded"] or it["old"] or it["wip"]))
+            r["made"][0] += sum(1 for it in items if it["done"][3] and it["mark"] != "drop"
+                                 and not (it["uploaded"] or it["old"] or it["wip"]))
     for line, path in paths:
         if names.get(line) in rows:
             rows[names[line]]["made"][1] += shorts_waiting(line, path)
@@ -310,6 +319,22 @@ def stock_panel(racks, paths):
     return f'<div class="stock">{left}{"".join(right) or "<div class=sub>還沒有上架紀錄</div>"}</div>'
 
 
+MARK_JS = """<script>
+// the chip at a box's top left: a person's mark (dreamfab/marks.py), saved by the library at /mark; the counts follow on reload
+document.addEventListener("click", e => {
+  const c = e.target.closest(".mk"); if (!c) return;
+  e.preventDefault(); e.stopPropagation();
+  const cycle = ["", "keep", "drop", "review"], label = {"": "＋", keep: "留下", drop: "不留", review: "待看"};
+  const m = cycle[(cycle.indexOf(c.dataset.m) + 1) % cycle.length];
+  fetch("/mark", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({k: c.dataset.k, m})})
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(() => { c.dataset.m = m; c.textContent = label[m]; c.className = "mk m-" + (m || "none");
+                  c.closest(".box").classList.toggle("drop", m === "drop"); })
+    .catch(x => { c.classList.add("err"); c.title = "沒存到（" + x + "）：資源庫要用 dreamfab/library.py serve 開"; });
+});
+</script>"""
+
+
 def hours(sec):
     m = round(sec / 60)
     return f"{m // 60} 小時 {m % 60} 分" if m >= 60 else f"{m} 分"
@@ -325,6 +350,11 @@ def page(series, explainers, loose, files_url, ads=()):
     paths = [(line, path) for line, _, _, path in racks]
     racks = [(line, name, href, {"drama": drama, "mv": mv, "explain": explain, "ad": ad}.get(line, drama)(path, href))
              for line, name, href, path in sorted(racks, key=lambda r: (order.index(r[0]) if r[0] in order else 9, r[1]))]
+    marked = marks.get_all()
+    for _, _, _, items in racks:
+        for it in items:
+            it["mark"] = marked.get(it["key"], ("", ""))[0]
+            it["wip"] = it["wip"] and it["mark"] != "drop"   # given up: off the line
 
     def img(path, w):
         return f'<img loading="lazy" decoding="async" src="{files_url(path)}?w={w}" alt="">'
@@ -356,8 +386,8 @@ def page(series, explainers, loose, files_url, ads=()):
                      f'<a class="gate" href="#store"><span>⤵</span>入庫</a><div class="track {"run" if wip else "idle"}">{"<i></i>" * 3 if wip else ""}</div>'
                      f'</div></div><div class="feed">{feed}</div></div></div>')
     lines.append('<div class="soon">' + "".join(
-        f'<div class="line"><div class="plate"><b>{p}</b><span>{t}</span></div><div class="sub">規劃中・新產線只要寫自己的流程和 skill，'
-        f'生成引擎和共用核心直接用</div></div>' for p, t in SOON) + "</div>")
+        f'<div class="line"><div class="plate"><b>{p}</b><span>{t}</span></div><div class="sub">{note}</div></div>'
+        for p, t, note in SOON) + "</div>")
 
     shelves, made, up, total = [], 0, 0, 0.0
     codes = {}
@@ -370,22 +400,30 @@ def page(series, explainers, loose, files_url, ads=()):
         for tier, its in tiers.items():
             tiles = []
             for it in its:
+                m = it["mark"]
+                chip = (f'<span class="mk m-{m or "none"}" data-k="{E(it["key"])}" data-m="{m}" role="button" '
+                        f'title="人的決定（跟上架分開）：點一下換 留下 → 不留 → 待看 → 清除">{marks.LABELS.get(m, "＋")}</span>'
+                        if it["key"] else "")
                 if it["wip"]:
                     st = dict((l[0], l[3]) for l in LINES).get(line, LINES[0][3])[it["at"]]
                     tiles.append(f'<a class="box" href="{it["href"]}" title="{E(it["long"])}・製作中"><span class="ph">製作中<b>{E(st)}</b></span>'
-                                 f'<span class="cap">{E(it["short"])}</span></a>')
+                                 f'{chip}<span class="cap">{E(it["short"])}</span></a>')
                     continue
                 tag = ('<span class="tag ok" title="已上架">▶</span>' if it["uploaded"] else
-                       '<span class="tag old">舊作</span>' if it["old"] else '<span class="tag">待上架</span>')
+                       '<span class="tag old">舊作</span>' if it["old"] else
+                       '<span class="tag">未上架</span>' if m else '<span class="tag">待上架</span>')
                 pic = img(it["cover"], 160 if line in TALL else 340) if it["cover"] else '<span class="ph"></span>'
-                tiles.append(f'<a class="box" href="{it["href"]}" title="{E(it["long"])}">{pic}{tag}<span class="cap">{E(it["short"])}</span></a>')
+                tiles.append(f'<a class="box{" drop" if m == "drop" else ""}" href="{it["href"]}" title="{E(it["long"])}">'
+                             f'{pic}{tag}{chip}<span class="cap">{E(it["short"])}</span></a>')
             boxes.append(f'<div class="tier"><span class="tier-label">{E(tier)}・{len(its)} 件</span><div class="shelf">{"".join(tiles)}</div></div>')
         done = [it for it in items if it["done"][3]]
         n_up, n_wip = sum(1 for it in items if it["uploaded"]), sum(1 for it in items if it["wip"])
-        n_wait = sum(1 for it in done if not (it["uploaded"] or it["old"] or it["wip"]))
+        n_wait = sum(1 for it in done if not (it["uploaded"] or it["old"] or it["wip"] or it["mark"]))
+        n_mark = {k: sum(1 for it in items if it["mark"] == k) for k in marks.LABELS}
         dur = sum(it["dur"] or 0 for it in done)
         made, up, total = made + len(done), up + n_up, total + dur
-        facts = [f"{len(items)} 件"] + [f"{label} {n}" for label, n in (("已上架", n_up), ("待上架", n_wait), ("在製", n_wip)) if n] + \
+        facts = [f"{len(items)} 件"] + [f"{label} {n}" for label, n in (("已上架", n_up), ("待上架", n_wait), ("在製", n_wip))
+                                       + tuple((marks.LABELS[k], n_mark[k]) for k in marks.LABELS) if n] + \
             ([f"片長 {hours(dur)}"] if dur else [])
         title = dict((l[0], f"{l[1]}・{l[2]}") for l in LINES).get(line, line)
         shelves.append(f'<section class="rack l-{line}{" tall" if line in TALL else ""}" id="rack-{E(Q(name))}"><div class="rack-head">'
@@ -420,7 +458,7 @@ def page(series, explainers, loose, files_url, ads=()):
             f'<a class="node key" href="#store"><b>倉庫</b><span>成品 {made} 件・{hours(total)}</span></a><span class="arr" style="animation-delay:1.40s">→</span>'
             f'<a class="node" href="#ship"><b>YouTube</b><span>已上架 {up} 件</span></a></div></section>')
     body = (hero + f'<h2 id="lines">產線<span class="sub">每一集停在它還沒過的那一站；有成片、有封面就入庫</span></h2>{"".join(lines)}'
-            f'<h2 id="store">倉庫<span class="sub">一個系列一座貨架、一季一層；▶ 已上架、待上架、虛線是還在產線上的</span></h2>'
+            f'<h2 id="store">倉庫<span class="sub">一個系列一座貨架、一季一層；▶ 已上架、待上架、虛線是還在產線上的；左上角是人的決定（留下・不留・待看），點一下換</span></h2>'
             f'<div class="racks">{"".join(shelves)}</div>'
             f'<h2 id="stock">庫存與出貨<span class="sub">做好沒上傳、已上傳沒公開、已公開；每天出貨不要超過上限，以免被限流</span></h2>'
             f'{stock_panel(racks, paths)}'
@@ -431,4 +469,4 @@ def page(series, explainers, loose, files_url, ads=()):
     nav = '<nav><a href="#lines">產線</a><a href="#store">倉庫</a><a href="#stock">庫存與出貨</a>' + ('<a href="#ship">出貨紀錄</a>' if ship else "") + ('<a href="#loose">散件區</a>' if loose_cards else "") + "</nav>"
     return (f'<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1"><title>Dreamfab 造夢廠</title><style>{CSS}</style></head>'
-            f'<body><header><b>Dreamfab</b><span class="sub">造夢廠</span>{nav}</header><main>{body}</main></body></html>')
+            f'<body><header><b>Dreamfab</b><span class="sub">造夢廠</span>{nav}</header><main>{body}</main>{MARK_JS}</body></html>')

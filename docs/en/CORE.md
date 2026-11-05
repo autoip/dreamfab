@@ -27,6 +27,8 @@ python dreamfab/library.py list projects      # just lists the series it finds a
 
 **Warehouse**: a rack per series and a shelf per season, each episode standing on it by its cover, marked ▶ uploaded or waiting (待上架); one still on a line keeps a dashed slot that names its station. A rack's name opens that series' library. Folders that are not a series yet are under "loose items" (散件區).
 
+**A person's call, apart from YouTube**: the chip at each piece's top left marks it keep, drop or look again (留下／不留／待看); a click changes it, and it is kept in the shared database, with nothing moved or renamed. To mark a batch: `python dreamfab/marks.py keep|drop|review FOLDER…` (`clear` takes a mark off, `list` lists them). The mark only records the decision and sits next to ▶ uploaded / waiting: a marked piece that is not up reads 未上架 (not uploaded), and a dropped one is dimmed and left out of 待上架 and the stock's made-not-uploaded count; a piece dropped while still on a line leaves the line (given up, not stuck). Each rack counts keep, drop and look again on their own.
+
 **Stock and shipping**: per line, how many videos are made but not uploaded, uploaded but not public, and public (long videos and Shorts apart), and how many the channel put out each day of the last week and can still put out today (the cap is the workflow switch `youtube.daily_max`; 6 a day or fewer is wise, so the channel is not throttled). Publishing done by hand in Studio shows up after `python dreamfab/youtube_log.py sync`.
 
 ![Warehouse: a drama series, one shelf per season, ▶ uploaded or waiting](../images/library_home_store_drama.jpg)

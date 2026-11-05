@@ -12,10 +12,11 @@ rack per series in the warehouse), /u/<series>/ is that series' library. Folders
 explainer's script and narration, say) are listed too and served as plain files: /files/<path under ROOT>; a folder
 there is a page with players for its audio, video and images. An explainer series (project.py says LINE = "explain")
 gets the explain line's own pages there instead (explain/pages.py: episode cards, then each episode's cut, chapters,
-pictures and script); ?raw shows its plain listing, and ?w=<px> on an image sends it scaled down. Listens on 127.0.0.1
-only.
+pictures and script); ?raw shows its plain listing, and ?w=<px> on an image sends it scaled down. POST /mark
+{k: folder, m: keep|drop|review|""} keeps what a person decided about a piece (dreamfab/marks.py; the chips on the
+warehouse boxes send it): only for a folder under the roots, only from this page. Listens on 127.0.0.1 only.
 """
-import html, http.client, io, mimetypes, os, re, subprocess, sys, threading, urllib.parse
+import html, http.client, io, json, mimetypes, os, re, subprocess, sys, threading, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +24,7 @@ REPO = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(REPO, "explain"))
 import pages as explain_pages
 import home
+from dreamfab import marks   # pages.py has put the repo root on the path
 
 
 def line_of(series):
@@ -260,6 +262,27 @@ def serve(roots, port):
                 self.proxy(name, m[2] or "/")
             except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 pass   # the browser dropped a video request it no longer needs
+
+        def do_POST(self):
+            def reply(code, obj):
+                b = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+                self.send_response(code); self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+            if self.path != "/mark":
+                return reply(404, {"error": "not found"})
+            origin = self.headers.get("Origin")   # another site's page in the same browser may not mark things
+            if origin and urllib.parse.urlparse(origin).netloc != self.headers.get("Host"):
+                return reply(403, {"error": "other origin"})
+            try:
+                req = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 10_000)) or b"{}")
+                k, m = str(req.get("k", "")), str(req.get("m", ""))
+            except (ValueError, AttributeError):
+                return reply(400, {"error": "bad request"})
+            under = any(os.path.normcase(k).startswith(os.path.normcase(r) + os.sep) for r in roots)
+            if not (under and os.path.isdir(k)) or (m and m not in marks.LABELS):
+                return reply(400, {"error": "not a folder under the library, or not a mark"})
+            marks.put([k], m)
+            reply(200, {"k": k, "m": m, "label": marks.LABELS.get(m, "")})
 
         def proxy(self, name, path):
             """Forward to the series' own library; its pages link from / so their links get the /u/<name> prefix."""

@@ -126,7 +126,11 @@ def episode(path):
         if os.path.isdir(os.path.join(path, "voice")) else []
     thumbs = sorted(f for f in os.listdir(os.path.join(path, "thumbnails")) if f.endswith((".jpg", ".png"))) \
         if os.path.isdir(os.path.join(path, "thumbnails")) else []
-    yt = (json.loads(read(os.path.join(path, "youtube.json")) or "{}").get("full") or {})
+    # the news line's in-depth reports (news/make.py upload) keep the cover and the upload record in out/
+    cover = (f"thumbnails/{next((t for t in thumbs if t.startswith('thumb_A')), thumbs[0])}" if thumbs else
+             f"out/{name}_cover.jpg" if os.path.isfile(os.path.join(path, "out", name + "_cover.jpg")) else None)
+    yt = (json.loads(read(os.path.join(path, "youtube.json")) or "{}").get("full")
+          or json.loads(read(os.path.join(path, "out", "youtube.json")) or "{}"))
     return dict(folder=folder, num=num, question=question, title=title or question or (proj.get("TITLE") or [folder])[0],
                 lines=proj.get("TITLE") or (), mv=mv_name, mv_url=mv[2] if mv else "", music=os.path.basename(proj.get("MUSIC", "")),
                 chapters=chapters, cut=f"out/{name}.mp4" if os.path.isfile(cut) else None,
@@ -134,7 +138,7 @@ def episode(path):
                 srt=f"out/{name}.zh-TW.srt" if srt else None, script=proj.get("SCRIPT") if os.path.isfile(os.path.join(path, proj.get("SCRIPT") or "-")) else None,
                 images=[(i, ch, note, have(i)) for i, ch, note, *_ in images], parts=parts,
                 voice=[v for v in voice if os.path.splitext(v)[0] + "_cut" not in {os.path.splitext(x)[0] for x in voice}],
-                thumbs=thumbs, seo=seo, yt=yt, log=youtube_log.history([yt.get("id")]) if yt.get("id") else [])
+                thumbs=thumbs, cover=cover, seo=seo, yt=yt, log=youtube_log.history([yt.get("id")]) if yt.get("id") else [])
 
 
 def steps(ep):
@@ -150,7 +154,7 @@ def steps(ep):
         chip(f"旁白 {done_voice}/{n_voice}" if n_voice else "旁白", "ok" if n_voice and done_voice == n_voice else "doing" if done_voice else ""),
         chip(f"畫面 {done_img}/{n_img}" if n_img else "畫面", "ok" if n_img and done_img == n_img else "doing" if done_img else ""),
         chip(f"剪輯 {mmss(ep['length'])}" if ep["cut"] and ep["length"] else "剪輯 ✓" if ep["cut"] else "剪輯", "ok" if ep["cut"] else ""),
-        chip("封面 ✓" if ep["thumbs"] else "封面", "ok" if ep["thumbs"] else ""),
+        chip("封面 ✓" if ep["cover"] else "封面", "ok" if ep["cover"] else ""),
         chip("已上傳 ✓" if ep["yt"].get("id") else "上架", "ok" if ep["yt"].get("id") else ""),
     ] + ([chip(label + (" ✓" if a in done else ""), "ok" if a in done else "")   # after the upload: from the YouTube log
           for a, label in (("publish", "公開"), ("end_screen", "片尾"), ("card", "資訊卡"), ("pin", "置頂"))]
@@ -165,8 +169,7 @@ def series_page(path, url):
     cards = []
     for ep in eps:
         u = url + Q(ep["folder"]) + "/"
-        thumb = next((t for t in ep["thumbs"] if t.startswith("thumb_A")), ep["thumbs"][0] if ep["thumbs"] else None)
-        pic = (f'<img loading="lazy" src="{u}thumbnails/{Q(thumb)}" alt="">' if thumb else
+        pic = (f'<img loading="lazy" src="{u}{Q(ep["cover"])}" alt="">' if ep["cover"] else
                next((f'<img loading="lazy" src="{u}{Q(x[3])}" alt="">' for x in ep["images"] if x[3]), '<div class="noimg">🎬</div>'))
         mv = f'MV《{E(ep["mv"])}》' if ep["mv"] else ""
         cards.append(f'<a class="ep" href="{u}">{pic}<div class="b"><div class="n">第 {ep["num"]} 集 · {mv}</div>'
@@ -266,8 +269,7 @@ def episode_page(path, url):
         links.append(f'<a class="chip" href="{E(ep["mv_url"])}" target="_blank">♪ MV《{E(ep["mv"])}》</a>')
     if ep["srt"]:
         links.append(f'<a class="chip" href="{url}{Q(ep["srt"])}">字幕 .srt</a>')
-    thumb = next((t for t in ep["thumbs"] if t.startswith("thumb_A")), None)
-    poster = f' poster="{url}thumbnails/{Q(thumb)}"' if thumb else ""
+    poster = f' poster="{url}{Q(ep["cover"])}"' if ep["cover"] else ""
     if ep["cut"]:
         chaps = "".join(f'<button onclick="go({t})"><span class="t">{mmss(t)}</span><span>{E(n)}</span></button>'
                         for t, n in ep["chapters"]) or '<div class="sub" style="padding:6px 8px">章節在說明欄寫好後會出現在這裡</div>'
