@@ -86,6 +86,9 @@ projects/<節目>/
 ### 3. 生成
 ```
 python news/make.py cards  DAY
+python news/make.py hero   DAY                       # 選用：day.py 的 COVER_HERO → 封面主圖
+python news/make.py submit DAY hero --off-peak       # v4 一張 20 點（離峰 10 點），約半分鐘
+python news/make.py cover  DAY
 python news/make.py voice  DAY
 python news/make.py submit DAY voice --off-peak      # 旁白
 python news/make.py check  DAY                       # 逐字稿；列出聽起來不一樣的字
@@ -93,6 +96,7 @@ python news/make.py anchor DAY                       # 只取主播露臉的兩�
 python news/make.py submit DAY lipsync --off-peak    # 對嘴
 python news/make.py render DAY
 ```
+- **封面用當天的主圖**：`COVER_HERO` 把當天最大的那則新聞寫成一張圖（英文散文；漲用紅色光、跌用綠色光；不要字、logo、真人、旗子；主體放中間，上面三分之一留暗給標題）。有 `images/cover_hero.png` 時封面就用它，不再放主播；主體被下面的資訊框擋住，就在 `COVER` 加 `shift=40` 之類把圖往上移。
 - **旁白最後多唸一句「謝謝收看」**：語音服務會把最後一點聲音截掉，最後一個字常常只剩一半。多唸的這句被截掉也沒關係：第一次 `check`（或對時）時在它前面的停頓切掉，原檔留成 `voice/narr_raw.flac`。重唸的 `redo.flac` 也一樣。
 - **對嘴只送主播露臉的兩段**（開場、結尾，合計約 8 秒）：比整段送快三倍，點數一樣。
   - 對嘴影片常少最後半秒，所以送出的音檔尾巴補 0.6 秒靜音。

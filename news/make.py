@@ -5,11 +5,14 @@ uploaded or published.
 usage: python news/make.py new SERIES [YYYY-MM-DD]       a day folder: day.py from the last day (DATE updated),
                                                         script.md with the series' fixed first and last lines
        python news/make.py cards DAY                    draw the cards (HTML in Edge/Chrome, no credits)
-       python news/make.py cover DAY                    out/<NAME>_cover.jpg: the hook over the anchor, her face kept clear
+       python news/make.py hero DAY                     jobs/hero.json: the cover's own picture from day.py COVER_HERO
+                                                        (v4 text-to-image, 9:16, 20 credits) -> images/cover_hero.png
+       python news/make.py cover DAY                    out/<NAME>_cover.jpg: the hook over the day's picture
+                                                        (images/cover_hero.png), else over the anchor, her face clear
        python news/make.py seo DAY                      out/<NAME>_SEO.txt: hook titles, description, tags (not published)
        python news/make.py voice DAY                    jobs/voice.json: the whole narration in one job, ending with a
                                                         throwaway line that is cut off at the pause before it
-       python news/make.py submit DAY voice|lipsync|redo [--off-peak]   run that job file (dreamfab/aip_runner.py)
+       python news/make.py submit DAY voice|hero|lipsync|redo [--off-peak]   run that job file (dreamfab/aip_runner.py)
        python news/make.py check DAY                    transcribe voice/narr.flac; list words heard differently
        python news/make.py anchor DAY                   only the anchor's lines -> voice/anchor_in.wav (+0.6 s of
                                                         silence: lip-sync clips come back about 0.5 s short),
@@ -49,6 +52,8 @@ SERIES/series.py (the show; see examples/news/demo):
                                      (e05_… -> 5), {date} = the day folder's date as M/D ("{date}｜" -> 11/5｜)
 DAY/day.py: DATE, SOURCES, CARDS = {id: html}; row(), bar() and box() are there to build them.
   COVER = dict(lines=[("費半重挫 3.4%", "down"), ("AI 股殺不停？", "gold")], sub="...")   the cover's hook
+  COVER_HERO = "A row of semiconductor wafers ..."   the day's story as one picture for the cover (English prose,
+                                     no text, logos or real people; the top third left dark for the hook)
   SEO = dict(titles=["…", "…"], lead="…", tags=[…])                                 titles open on the same hook
 DAY/script.md: one line per sentence, "spoken｜subtitle｜picture" (picture = anchor or a card id; the same card on
 consecutive lines stays on screen). Spoken: numbers in words. Subtitle: digits.
@@ -398,8 +403,28 @@ def cards(day):
     print("cards ->", out)
 
 
+HERO_NEG = ("text, letters, words, numbers, logo, brand name, ticker symbol, flag, watermark, signature, real person, "
+            "face, crowd, cartoon, flat illustration, 3d render look")
+
+
+def hero(day):
+    """jobs/hero.json: the cover's own picture, the day's story in one image (day.py COVER_HERO, English prose) ->
+    images/cover_hero.png. A cover made for the story is clicked more than the same anchor every day; it costs one
+    v4 picture (20 credits, half off-peak) and goes with the narration in the same off-peak run."""
+    d, _ = load(day)
+    if not d.get("COVER_HERO"):
+        sys.exit("day.py has no COVER_HERO = \"...\" (the day's story as one picture, English prose)")
+    prompt = (d["COVER_HERO"].strip() + " Portrait 9:16 frame; the top third is dark and empty for a headline. "
+              "A photorealistic cinematic still, dramatic light, deep navy shadows.")
+    job = dict(id="hero", endpoint="/images/text-to-image",
+               fields=dict(size="540x960", mode="v4", prompt=prompt, negative_prompt=HERO_NEG),
+               out=os.path.abspath(os.path.join(day, "images", "cover_hero.png")).replace("\\", "/"))
+    print(write_jobs(day, "hero", [job]) + ": the cover's picture (20 credits, 10 off-peak)")
+
+
 def cover(day):
-    """out/<NAME>_cover.jpg (1080x1920): the anchor's face kept clear in the middle, the hook above her, one line below.
+    """out/<NAME>_cover.jpg (1080x1920): the hook at the top, one line below, over the day's own picture
+    (images/cover_hero.png from `hero`, or COVER_IMAGE); without one, over the anchor with her face kept clear.
     day.py: COVER = dict(lines=[(text, colour), ...], sub="...", shift=420)  colour: up | down | gold | white"""
     import pathlib
     d, _ = load(day)
@@ -407,8 +432,12 @@ def cover(day):
     if not c:
         sys.exit("day.py has no COVER = dict(lines=[(text, colour)], sub=...)")
     colours = dict(up="#ff4d4f", down="#27d17f", gold="#f5c542", white="#ffffff")
-    pic = pathlib.Path(os.path.abspath(sp(day, d.get("COVER_IMAGE", d["ANCHOR"])))).as_uri()
-    shift = c.get("shift", 560)   # the picture moves down so the face sits below the date and the hook
+    own = os.path.join(day, "images", "cover_hero.png")
+    img = sp(day, d["COVER_IMAGE"]) if d.get("COVER_IMAGE") else own if os.path.exists(own) else None
+    pic = pathlib.Path(os.path.abspath(img or sp(day, d["ANCHOR"]))).as_uri()
+    # the picture moves down so the anchor's face sits below the date and the hook; the day's own picture keeps its
+    # top third dark for them and moves less
+    shift = c.get("shift", 300 if img else 560)
     b1, b2 = d.get("BRAND", ("新聞", ""))
     # a daily show: the date is the first thing read, big enough for a phone's small tile ("11/3（二）" -> "11/3 週二")
     when = d.get("COVER_DATE") or re.sub(r"（(.)）", r" 週\1", d.get("DATE", ""))
@@ -950,7 +979,7 @@ if __name__ == "__main__":
         sys.exit(daily(target, "--test" in rest))
     if cmd == "schedule":
         sys.exit(schedule(target, "--remove" in rest, "--dry-run" in rest))
-    steps = dict(cards=lambda: cards(target), cover=lambda: cover(target), seo=lambda: seo(target),
+    steps = dict(cards=lambda: cards(target), hero=lambda: hero(target), cover=lambda: cover(target), seo=lambda: seo(target),
                  upload=lambda: upload(target, "private" if "--private" in rest else "public" if "--public" in rest else None), voice=lambda: voice(target), check=lambda: check(target),
                  anchor=lambda: anchor(target), render=lambda: render(target),
                  redo=lambda: redo(target, nums[0], nums[-1]), splice=lambda: splice(target, nums[0], nums[-1]),

@@ -87,6 +87,9 @@ In the 11/03 pilot, English sources first turned up three stories no Chinese rep
 ### 3. Making it
 ```
 python news/make.py cards  DAY
+python news/make.py hero   DAY                       # optional: day.py COVER_HERO -> the cover's picture
+python news/make.py submit DAY hero --off-peak       # one v4 picture, 20 credits (10 off-peak), about half a minute
+python news/make.py cover  DAY
 python news/make.py voice  DAY
 python news/make.py submit DAY voice --off-peak      # narration
 python news/make.py check  DAY                       # transcript; words heard differently
@@ -94,6 +97,7 @@ python news/make.py anchor DAY                       # only the anchor's two par
 python news/make.py submit DAY lipsync --off-peak    # lip-sync
 python news/make.py render DAY
 ```
+- **The cover has the day's own picture**: `COVER_HERO` puts the day's biggest story into one image (English prose; rising in red light, falling in green for a Taiwanese audience; no text, logos, real people or flags; the subject in the middle, the top third dark for the hook). With `images/cover_hero.png` there, the cover uses it instead of the anchor; when the box at the bottom hides the subject, `shift=40` or so in `COVER` moves the picture up.
 - **The narration ends with a throwaway "謝謝收看"**: the voice service cuts off the last moment of what it reads, often half of the final syllable. What it cuts off is the throwaway line: the first `check` (or timing) ends the file at the pause before it and keeps the file as it came as `voice/narr_raw.flac`. A re-read `redo.flac` gets the same.
 - **Lip-sync gets only the anchor's two parts** (opening and close, about 8 s together): three times faster than the whole narration, same credits.
   - Lip-sync clips usually come back half a second short, so the audio sent gets 0.6 s of silence at the end.

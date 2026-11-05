@@ -1,8 +1,9 @@
 Today is {DATE} (local time). The system scheduler started you and no one is watching: ask nothing, finish, then stop.
 
 Task: make today's episode of the show in {SHOW} with Dreamfab's news line, and upload it as that show's series.py says.
-- The user approved this standing run when they scheduled it: today's jobs (narration, lip-sync, one re-read) and the
-  upload at series.py's PRIVACY. Nothing beyond that: no other channel, no other privacy, no extra jobs.
+- The user approved this standing run when they scheduled it: today's jobs (narration, lip-sync, one re-read, and the
+  cover's picture when the show's days have one) and the upload at series.py's PRIVACY. Nothing beyond that: no other
+  channel, no other privacy, no extra jobs.
 - Work only in {SHOW}. No commit, no push; leave every other project alone.
 - Never read, print or write API keys or login files.
 
@@ -20,6 +21,10 @@ Task: make today's episode of the show in {SHOW} with Dreamfab's news line, and 
    (when they do not, a quote page's historical close decides). A number with no second source stays out.
 3. script.md and day.py (SOURCES, CARDS, COVER, SEO) as the skill says; then `cards`, `cover`, `seo`, and look at the
    cards and the cover: no text running out of its box.
+   - When the last day's day.py has COVER_HERO, the show's covers have their own picture: write today's (the day's
+     biggest story as one image in English prose, rising in red light and falling in green for a Taiwanese audience;
+     no text, logos, real people or flags; the subject in the middle), then `hero` → `submit DAY hero --off-peak`
+     before `cover`. A subject hidden by the box at the bottom: COVER shift=40 or so moves the picture up.
 4. `voice` → `submit DAY voice --off-peak` → `check`.
    - A word read wrong (`check` lists it; an English name the recogniser writes another way does not count): put a
      same-length swap in common characters that sound the same into series.py's SAY, then `redo DAY FIRST LAST` →

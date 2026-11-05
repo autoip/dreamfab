@@ -59,6 +59,9 @@ through `news/make.py`; read `ROOT/docs/en/news/OVERVIEW.md` before the first da
 3. `day.py`:
    - `SOURCES` and `CARDS`, built with `row()`, `bar()` and `box()`; red up and green down for Taiwan.
    - `COVER`: two hook lines (the biggest number, then a question) plus one line of the next stories.
+   - `COVER_HERO` (optional): the day's biggest story as one picture for the cover, in English prose: no text, logos,
+     real people or flags, the subject in the middle, the top third dark for the hook. `hero` → `submit hero` makes it
+     (one v4 picture, 20 credits); without it the cover shows the anchor.
    - `SEO`: titles A/B/C that open on the same hook, a lead, tags.
 4. `cards`, `cover`, `seo` (no credits). Show the cards and the cover before spending anything.
 5. `voice` → `submit voice` → `check`. Listen to every spot `check` lists. English names are often written otherwise
