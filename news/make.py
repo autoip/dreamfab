@@ -152,6 +152,15 @@ def series_of(day):
     return os.path.dirname(os.path.abspath(day))
 
 
+def settings(f, ns=None):
+    """Run series.py or day.py into ns. __file__ is set, so it can read a file next to it, e.g. a SAY table that two
+    shows read by the same voice keep together."""
+    ns = {} if ns is None else ns
+    ns["__file__"] = os.path.abspath(f)
+    exec(open(f, encoding="utf-8").read(), ns)
+    return ns
+
+
 def load(day):
     """(settings, script rows): series.py, then ROTA for the day's weekday and date, then day.py over it;
     rows = [spoken, subtitle, picture]."""
@@ -163,7 +172,7 @@ def load(day):
             for k in (weekday, when):   # a guest anchor on a weekday, then on a date
                 ns.update(ns.get("ROTA", {}).get(k, {}))
         if os.path.exists(f):
-            exec(open(f, encoding="utf-8").read(), ns)
+            settings(f, ns)
     rows = [[c.strip() for c in l.split("｜")] for l in open(os.path.join(day, "script.md"), encoding="utf-8").read().splitlines()
             if l.count("｜") == 2 and not l.lstrip().startswith(("#", ">", "每一行"))]
     for r in rows:
@@ -238,8 +247,7 @@ def new_day(series, when=None):
     else:
         src = f'DATE = "{label}"\nSOURCES = "資料來源：…<br>主播與聲音為 AI 生成｜僅供參考，不構成投資建議"\nCARDS = {{}}\n'
     open(os.path.join(day, "day.py"), "w", encoding="utf-8", newline="\n").write(src)
-    ns = {}
-    exec(open(os.path.join(series, "series.py"), encoding="utf-8").read(), ns)
+    ns = settings(os.path.join(series, "series.py"))
     lines = [f"# {when}", "", "每一行三欄，用全形直線隔開：唸的（數字寫國字）、字幕（阿拉伯數字）、畫面（anchor 或 CARDS 的 id）", "",
              ns.get("FIRST_LINE", "早安。｜早安｜anchor"), "", ns.get("LAST_LINE", "以上是今天的新聞。｜以上是今天的新聞｜anchor"),
              *([ns["CTA_LINE"]] if ns.get("CTA_LINE") else []),
@@ -253,8 +261,7 @@ DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
 def daily_settings(series):
-    ns = {}
-    exec(open(os.path.join(series, "series.py"), encoding="utf-8").read(), ns)
+    ns = settings(os.path.join(series, "series.py"))
     return dict(dict(at="06:30", days="mon-fri", latest=None, prompt="daily_prompt.md",
                      task="Dreamfab " + os.path.basename(os.path.abspath(series))), **ns.get("DAILY", {}))
 

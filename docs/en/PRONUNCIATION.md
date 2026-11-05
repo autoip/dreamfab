@@ -38,10 +38,26 @@ SAY = [("光纖", "光仙"), ("供給", "供擠"), ("叢集", "從集"), ("瓶�
 
 **One table per show**: on the news line it lives in `series.py`, so every day uses it. Explainers and in-depth reports have one `project.py` per episode; copy the table from the last episode when starting the next.
 
+**Shows read by the same voice share one table**: a word one show's voice gets wrong, the other's gets wrong too. Keep `SAY` in a shared file that each show reads, and add new words only there. `series.py` and `project.py` both know where they are (`__file__`), for example:
+
+```python
+import os
+exec(open(os.path.join(os.path.dirname(__file__), "..", "錯音表.py"), encoding="utf-8").read())
+SAY = SAY + [("範圍，最快", "範圍。最快")]   # a swap for one sentence of this episode stays here
+```
+
+**Dreamfab's own table is public in [`dreamfab/say_zh.py`](../../dreamfab/say_zh.py)**: the daily news and the in-depth reports both read it, and you can use it as it is. It was found with one voice (a Taiwanese-accented anchor on AutoIP's default engine); another voice may need fewer pairs, or others.
+
+```python
+from dreamfab.say_zh import SAY
+SAY = SAY + [("範圍，最快", "範圍。最快")]
+```
+
 ## What to read again
 - **One or two sentences wrong**: read just those again and put them back into the narration. On the news line: `news/make.py redo DAY 4 9` → `submit DAY redo` → `splice DAY 4 9`. The re-read applies the table, and the splice cuts at the pauses before and after, leaving at least 0.3 s.
 - **Many spots wrong**: reading the whole narration again is cleaner. Its timing changes, so any lip-synced anchor parts must be lip-synced again; pictures and cards are kept.
-- **The new take misreads something else**: mix the takes within a sentence, each where it is right, joined at a pause.
+- **The new take misreads something else**: mix the takes within a sentence, each where it is right, joined at a pause. On the explainer line, `NARRATION` takes `dict(audio=old, job=..., stop_at="X")` followed by `dict(audio=new, job=..., start_at="X")`: the old take up to X, the new one from X, both cut at the pause before X.
+- **One part a chapter** (explainer line, `VOICE_SPLIT = "chapter"`): a misread chapter is read again on its own.
 - **Cost**: 50 credits a narration part, 50 a lip-sync; half off-peak (03:00-09:00 Taiwan time).
 
 ## Before you swap: other ways
@@ -49,14 +65,24 @@ SAY = [("光纖", "光仙"), ("供給", "供擠"), ("叢集", "從集"), ("瓶�
 - **Write English as English**: Dow Jones, Oracle, Apple in Latin letters are read in English. On the news line the subtitle column can still show Chinese names.
 - **Rephrase**: with no same-sounding character to hand, say it another way (一路貶爵 → 一路降爵).
 
+## Trouble that is not a misread
+- **The last syllable is cut off**: the voice service cuts off the last moment of what it reads; measured, nearly every file ended in the middle of a sound. On the explainer line every part ends with a throwaway "謝謝收看", cut off at the pause before it (`TAIL` in `explain/common.py`). Ending in "……" did not help.
+- **A word comes out as a noise**: the recogniser hears nothing there, and `check` marks it "nothing heard". Seen with an English name followed straight by a Chinese verb (the 買 of "AppLovin Ads 買廣告"); one more word between them ("Ads 平台買廣告") fixed it.
+- **When no same-sounding traditional character works, try simplified**: 廣告 was read as 槓購 all through an episode; 廣誥 and 獷告 did not help, simplified 广告 did, and so did 报告 for 報告. The reading is the same and the subtitles keep the original.
+- **Swap only what both recognisers hear wrong**: a word is not misread every time, and recognisers mishear too. One recogniser alone (medium or large-v3) is usually the recogniser; both of them, or your ears, mean a pair for the table.
+- **Where chapters are cut**: the recogniser's word times run on over a pause, so a cut there takes off the end of the last syllable. The explainer line cuts at the pause found in the sound.
+
 ## The table (used in Dreamfab productions)
-From this project's explainers, in-depth reports and daily news. Copy all of it or only what you need.
+From this project's explainers, in-depth reports and daily news. Copy all of it or only what you need. The one the news channel reads now is `dreamfab/say_zh.py`.
 
 **Characters with two readings**
 | Subtitle | Read as | Note |
 |---|---|---|
 | 供給 | 供擠 | 給 is jǐ |
 | 重啟 | 崇啟 | 重 is chóng |
+| 金鑰 | 金要 | 鑰 is yào |
+| 門檻 | 門砍 | 檻 is kǎn |
+| 乾脆 | 甘脆 | 乾 is gān; the voice said qián |
 | 亭長 | 亭掌 | 長 is zhǎng |
 | 和之, 和了 | 賀之, 賀了 | 和 as in singing along is hè |
 | 脈脈 | 末末 | mò mò |
@@ -107,6 +133,22 @@ From this project's explainers, in-depth reports and daily news. Copy all of it 
 | 帳上 | 丈上 | 帳 is zhàng |
 | 黃仁勳 | 皇仁薰 | a name |
 | 槓桿擴張 | 幹港闊章 | gàng gǎn, kuò: the characters the user's ear picked |
+| 情報 | 晴報 | the default engine said something like 新房 |
+| 攻擊 | 公擊 | heard as 中擊 |
+| 釣魚 | 吊魚 | 釣 is diào |
+| 企業 | 啟夜 | the characters the user's ear picked |
+| 外洩 | 外謝 | 洩 is xiè |
+| 併購 | 病夠 | 併 is bìng; the user's ear picked these |
+| 飆漲 | 標漲 | 飆 is biāo |
+| 贊助 | 讚助 | 贊 was heard as 根 |
+
+**Common words read wrong too** (both recognisers heard the misread)
+| Subtitle | Read as | Subtitle | Read as | Subtitle | Read as |
+|---|---|---|---|---|---|
+| 廣告 | 广告 (simplified) | 報告 | 报告 (simplified) | 資料 | 姿料 |
+| 下載 | 下再 | 學習 | 學席 | 推薦 | 推見 |
+| 獎勵 | 獎麗 | 蒐集 | 搜集 | 訴訟 | 訴送 |
+| 註冊 | 註策 | 機關 | 基關 | | |
 
 **Numbers**
 | Subtitle | Read as | Note |
