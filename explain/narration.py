@@ -1,10 +1,16 @@
 """Narration for an explainer: voice-clone jobs from the script, then a check of what came back.
 
-usage: python explain/narration.py PROJECT_DIR jobs [--max 1100]   jobs/voice_jobs.json: the narration in parts of at most
+usage: python explain/narration.py PROJECT_DIR jobs [--max 1100] [--per-chapter]
+                                                                  jobs/voice_jobs.json: the narration in parts of at most
                                                                   --max characters, split between chapters (the API takes
                                                                   1,200), SAY applied, read in proj.VOICE
                                                                   (proj.VOICE_FIELDS: more /voice/clone fields, e.g.
-                                                                  voice_engine="voxcpm2", dialect="sichuan")
+                                                                  voice_engine="voxcpm2", dialect="sichuan"). Each part
+                                                                  ends with a throwaway line (common.TAIL) that render.py
+                                                                  leaves out. --per-chapter (or VOICE_SPLIT = "chapter"
+                                                                  in project.py): one part per chapter, so no chapter is
+                                                                  cut out of the middle of a file and a misread chapter
+                                                                  is read again on its own
        python explain/narration.py PROJECT_DIR check [AUDIO ...]  transcribe (cached in voice/*.words.json) and report
                                                                   speed, words to listen to, a missing ending, or a voice
                                                                   that runs on and repeats itself after the text ends
@@ -13,7 +19,7 @@ Submit with: python dreamfab/aip_runner.py PROJECT_DIR/jobs/voice_jobs.json [--o
 """
 import os, subprocess, sys
 from common import load_project, P, jload, jdump, estimate, off_peak, chapters, spoken, narration, words_path, transcribe, align, PUNCT, \
-    asr_language
+    asr_language, tail, pause_after
 
 if len(sys.argv) < 3 or sys.argv[2] not in ("jobs", "check", "cut"):
     sys.exit(__doc__)
@@ -28,6 +34,9 @@ def alike(said, heard):
     return len(said) == len(heard) and all(reads(x) & reads(y) for x, y in zip(said, heard))
 
 
+NUMBER_WORDS = set("零〇一二三四五六七八九十百千萬億兩點分之")
+
+
 def mmss(t):
     return f"{int(t // 60)}:{t % 60:04.1f}"
 
@@ -39,16 +48,20 @@ if cmd == "jobs":
         sys.exit(f"no voice sample {voice} (proj.VOICE)")
     if len(getattr(proj, "VOICE_FIELDS", {}).get("style", "")) > 50:   # the API rejects the job (no credits are spent)
         sys.exit(f"VOICE_FIELDS style is {len(proj.VOICE_FIELDS['style'])} characters: the voice API takes 50 at most")
+    end = tail(proj)
+    limit -= len(end) + 2
+    per_chapter = "--per-chapter" in args or getattr(proj, "VOICE_SPLIT", "") == "chapter"
     parts, cur = [], []
     for head, text in chapters(proj):
-        if cur and len("\n\n".join(cur + [text])) > limit:
+        if cur and (per_chapter or len("\n\n".join(cur + [text])) > limit):
             parts.append(cur); cur = []
         if len(text) > limit:
             sys.exit(f"chapter {head!r} is {len(text)} characters: split it (the voice API takes {limit} here)")
         cur.append(text)
     parts.append(cur)
-    jobs = [dict(id=f"part{k + 1}", endpoint="/voice/clone", fields=dict(text=spoken("\n\n".join(p), proj), **getattr(proj, "VOICE_FIELDS", {})),
-                 files=dict(reference_audio=P(voice)), out=P(D, "voice", f"part{k + 1}.flac")) for k, p in enumerate(parts)]
+    jobs = [dict(id=f"part{k + 1}", endpoint="/voice/clone",
+                 fields=dict(text=spoken("\n\n".join(p), proj) + "\n\n" + end, **getattr(proj, "VOICE_FIELDS", {})),
+                 files=dict(reference_audio=P(voice)), out=P(D, "voice", f"part{k + 1}.flac"), tail=end) for k, p in enumerate(parts)]
     jdump(jobs, os.path.join(D, "jobs", "voice_jobs.json"))
     full = sum(estimate(j) for j in jobs)
     for j in jobs:
@@ -67,7 +80,8 @@ elif cmd == "check":
         if not os.path.exists(it["audio"]):
             print(f"{os.path.relpath(it['audio'], D)}: not there yet"); continue
         w = jload(words_path(it["audio"]))
-        text, words, dur = it["text"], w["words"], w["duration"]
+        # the whole file is checked, also where NARRATION plays only a stretch of it (stop_at / start_at)
+        text, words, dur = it["before"] + it["text"] + it["after"], w["words"], w["duration"]
         ct, info = align(text, words)
         n = len(info["idx"])
         hit = sum(b[2] for b in info["blocks"])
@@ -76,6 +90,12 @@ elif cmd == "check":
         last_b = max((b + k for a, b, k in info["blocks"] if k), default=0)
         if n - last_a > 6:
             print(f"  !! the last {n - last_a} characters were not heard: the voice stopped early (re-read the ending)")
+        elif it["tail"]:   # the throwaway line follows: is there a pause to end the part in?
+            if not pause_after(it["audio"], ct[info["idx"][-1]][0] - 0.05):
+                print("  !! no pause after the last words: the throwaway line runs into them (listen to the ending)")
+        elif os.path.exists(it["audio"]) and not pause_after(it["audio"], max(0.0, dur - 0.08)):
+            print("  !! the file ends in the middle of a sound: the last syllable is cut off (re-read the ending; new jobs"
+                  " end with a throwaway line, common.TAIL)")
         extra = len(info["asr"]) - last_b
         if extra > 8:
             t = info["asr_t"][last_b][0]
@@ -89,6 +109,10 @@ elif cmd == "check":
                 heard = "".join(info["asr"][tb:b])
                 if not alike(said, heard):
                     print(f"  listen at {mmss(ct[info['idx'][ta]][0])}: 「{said}」 (heard as {heard})")
+            elif 2 <= a - ta <= 8 and b == tb and k:   # e07 1:04: 買廣告 came out as a noise the recogniser skipped
+                said = "".join(text[info["idx"][i]] for i in range(ta, a))
+                if not set(said) <= NUMBER_WORDS:   # 百分之五十 comes back as 50%: the 百分之 is not missing
+                    print(f"  listen at {mmss(ct[info['idx'][ta]][0])}: 「{said}」 (nothing heard)")
             prev = (a + k, b + k)
     print("Pinyin is compared, so same-sounding words pass; what is listed sounds different. Fix a misread with SAY"
           " (same-length, same-sounding characters) and re-read just those lines.")

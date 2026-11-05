@@ -48,8 +48,8 @@ A film look: FILM = dict(bars=130, warm=0.08, vignette=0.35) adds black bars (wi
 """
 import os, subprocess, sys
 import numpy as np
-from common import load_project, jload, venc, chapters, written, narration, words_path, transcribe, align, lines, \
-    ass_time, sub_styles, sub_events, translations, asr_language
+from common import load_project, jload, venc, chapters, written, narration, words_path, transcribe, align_item, lines, \
+    ass_time, sub_styles, sub_events, translations, asr_language, pause_after
 from dreamfab.workflow import get as workflow
 
 W, H, FPS = 1920, 1080, 30
@@ -68,6 +68,7 @@ def music_track(proj, chaps, total, work, start=None):
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", src_file, "-ac", "1", "-ar", "8000", "-f", "f32le", "-"],
                          capture_output=True, check=True).stdout
     mono = np.frombuffer(raw, np.float32)
+    length = len(mono) / 8000
     starts, target = getattr(proj, "CH_MUSIC", {}), getattr(proj, "MUSIC_DB", -27)
     if start is None and not starts:   # a piece written for this video: no sections to pick, keep it whole
         start, chaps = 0.0, []
@@ -79,7 +80,13 @@ def music_track(proj, chaps, total, work, start=None):
         dur = b - a + 2.0
         x = mono[int(src * 8000): int((src + dur) * 8000)]
         rms = 20 * np.log10(np.sqrt(np.mean(x ** 2)) + 1e-9) if len(x) else target
-        segs.append((src, dur, float(np.clip(target - rms, -12, 10))))
+        g = float(np.clip(target - rms, -12, 10))
+        # music shorter than the video plays again from the top, cross-faded like a section (e07: a 5:51 bed under
+        # an 8:07 video went silent for the last chapter, the closing and the fact cards)
+        while src + dur > length + 0.05 and length - src > 6:
+            segs.append((src, length - src, g))
+            src, dur = 0.0, dur - (length - src) + 2.0
+        segs.append((src, dur, g))
     cmd, fl = ["ffmpeg", "-v", "error", "-y"], []
     for k, (src, dur, g) in enumerate(segs):
         cmd += ["-ss", f"{src:.3f}", "-t", f"{dur:.3f}", "-i", src_file]
@@ -153,8 +160,46 @@ def build():
                                       it["audio"]], capture_output=True, text=True, check=True).stdout)
             parts.append(dict(path=it["audio"], text="", ct=[], dur=d, sound=True)); continue
         w = jload(words_path(it["audio"]))
-        ct, _ = align(it["text"], w["words"])
-        parts.append(dict(path=it["audio"], text=written(it["text"], proj), ct=ct, dur=w["duration"]))
+        ct, _ = align_item(it, w["words"])
+        parts.append(dict(path=it["audio"], text=written(it["text"], proj), ct=ct, dur=w["duration"], more=it["more"],
+                          late=it["late"]))
+
+    def start(p):
+        """Where a part starts in its file: 0, or for a start_at part the end of the last pause before its first word."""
+        if not p["late"]:
+            return 0.0
+        first, gap = next(c for c in p["ct"] if c), None
+        t = max(0.0, first[0] - 0.8)
+        while (g := pause_after(p["path"], t, first[0] + 0.1)):
+            gap, t = g, g[1] + 0.01
+        if not gap:
+            print(f"  !! {os.path.basename(p['path'])}: no pause before 「{p['text'][:8]}」, started at {first[0] - 0.05:.2f} s")
+            return max(0.0, first[0] - 0.05)
+        return max(gap[1] - 0.04, (gap[0] + gap[1]) / 2)
+
+    def boundary(p, b):
+        """(where the piece before character b ends, where the piece from b starts) in seconds of the part's file: in
+        the pause between them, found in the sound. The recogniser's word times run on over the pause, and a cut half
+        way between them took off the end of the last syllable (e07: 是多少, 原因). b = len(text): the end of a part
+        whose audio goes on (the throwaway TAIL, a stop_at)."""
+        ct = p["ct"]
+        last = next(ct[i] for i in range(b - 1, -1, -1) if ct[i])
+        nxt = next((ct[i] for i in range(b, len(ct)) if ct[i]), None)
+        if nxt is None and not p["more"]:
+            return p["dur"], p["dur"]
+        hi = min(p["dur"], (max(last[1], nxt[0]) if nxt else p["dur"]) + 0.6)
+        gap = pause_after(p["path"], last[0] - 0.05, hi)
+        if gap:
+            s, e = gap
+            return min(s + 0.06, (s + e) / 2), max(e - 0.04, (s + e) / 2)
+        if nxt is None:
+            print(f"  !! {os.path.basename(p['path'])}: no pause after 「{p['text'][max(0, b - 8):b].strip()}」, played to the"
+                  " end of the file: listen to it")
+            return p["dur"], p["dur"]
+        mid = (last[1] + nxt[0]) / 2
+        print(f"  !! {os.path.basename(p['path'])}: no pause before 「{p['text'][b:b + 8].strip()}」, cut at {mid:.2f} s")
+        return mid, mid
+
     pieces = []   # (part, first char, end char, from s in the file, to s in the file, chapter heading or None)
     nh = 0        # chapters come in order: look only for the next heading, after the last one (an opening quote can recur)
     for pi, p in enumerate(parts):
@@ -173,10 +218,8 @@ def build():
             if a >= stop:
                 break
             b = min(b, stop)
-            first = next(ct[i] for i in range(a, b) if ct[i])[0]
-            last = next(ct[i] for i in range(b - 1, a - 1, -1) if ct[i])[1]
-            fa = 0.0 if a == 0 else (first + next(ct[i] for i in range(a - 1, -1, -1) if ct[i])[1]) / 2
-            fb = p["dur"] if b == len(text) else (last + next(ct[i] for i in range(b, len(text)) if ct[i])[0]) / 2
+            fa = start(p) if a == 0 else boundary(p, a)[1]
+            fb = boundary(p, b)[0]
             pieces.append((pi, a, b, fa, fb, name))
         if stop < len(text):
             break
@@ -191,12 +234,9 @@ def build():
             if to and to not in text[a:]:
                 sys.exit(f"SHORTS clip {frm!r}: {to!r} does not come after it in the same part")
             b = text.index(to, a) if to else len(text)
-            first = next(ct[i] for i in range(a, b) if ct[i])[0]
-            last = next(ct[i] for i in range(b - 1, a - 1, -1) if ct[i])[1]
             prev = next((ct[i][1] for i in range(a - 1, -1, -1) if ct[i]), None)
-            nxt = next((ct[i][0] for i in range(b, len(text)) if ct[i]), None)
-            fa = 0.0 if prev is None else (first + prev) / 2
-            fb = parts[pi]["dur"] if nxt is None else (last + nxt) / 2
+            fa = start(parts[pi]) if prev is None else boundary(parts[pi], a)[1]
+            fb = boundary(parts[pi], b)[0]
             pieces.append((pi, a, b, fa, fb, None))
     first_head = heads[0][0] if heads else None
     t, place, chaps = LEAD, [], []

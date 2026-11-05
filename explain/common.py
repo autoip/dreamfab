@@ -17,6 +17,13 @@ from dreamfab.util import load_project, P, jload, jdump, run, venc, estimate, of
 
 PUNCT = "，。、：；？！「」『』〈〉《》（）—…·,.:;?!()\"' \n"
 
+# The voice service cuts off the last moment of what it reads: most files end in the middle of the final syllable.
+# So every job ends with a throwaway line after a paragraph break; that is what gets cut off. narration() leaves it
+# out of the text and render.py ends the part at the pause before it. Tested with four endings of the same text: as
+# written, and ending in "……", both lost the last syllable; with this line the last word was whole and followed by a
+# 0.1-0.3 s pause.
+TAIL = {"zh": "謝謝收看。", "en": "Thanks for watching.", "ja": "ご視聴ありがとうございました。"}
+
 
 def _narration_md(proj):
     md = open(os.path.join(proj.DIR, getattr(proj, "SCRIPT", "script.md")), encoding="utf-8").read()
@@ -50,6 +57,39 @@ def translations(proj):
 def asr_language(proj):
     """The recogniser's language code for the narration: RENDER["lang"] without its region (zh-TW -> zh, ja -> ja)."""
     return getattr(proj, "RENDER", {}).get("lang", "zh-TW").split("-")[0]
+
+
+def tail(proj):
+    """The throwaway line read after the narration of every voice job (TAIL), in the narration's language."""
+    return TAIL.get(asr_language(proj), TAIL["zh"])
+
+
+_pcm = {}
+
+
+def pause_after(path, t, until=None, thr=-50.0, min_len=0.06):
+    """The first pause in an audio file after t seconds (and starting before `until`): at least min_len s quieter than
+    thr dBFS, in 10 ms steps. (start, end) in seconds, or None. Word times from the recogniser run on over a pause and
+    end the last word too early, so a cut is placed by the sound itself."""
+    import numpy as np, subprocess
+    if path not in _pcm:
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
+                             capture_output=True, check=True).stdout
+        x = np.frombuffer(raw, np.float32)
+        k = len(x) // 160
+        _pcm[path] = 20 * np.log10(np.sqrt(np.mean(x[:k * 160].reshape(k, 160) ** 2, axis=1)) + 1e-9)
+    db = _pcm[path]
+    i, stop, need = max(0, int(t * 100)), min(len(db), int((until or len(db) / 100) * 100)), round(min_len * 100)
+    while i < stop:
+        if db[i] < thr:
+            j = i
+            while j < len(db) and db[j] < thr:
+                j += 1
+            if j - i >= need or j == len(db):
+                return i / 100, j / 100
+            i = j
+        i += 1
+    return None
 
 
 def spoken(text, proj):
@@ -97,9 +137,15 @@ def find_job(proj, jid):
 
 
 def narration(proj):
-    """What render.py plays, in order: [dict(audio, text, stop_at)]. proj.NARRATION lists them when a part was cut
+    """What render.py plays, in order: [dict(audio, text, more)]. proj.NARRATION lists them when a part was cut
     or patched; otherwise every /voice/clone job in jobs/voice_jobs.json, in order. dict(audio=..., sound=True) in
-    NARRATION is a sound played whole between two parts (a voice sample, a line of dialogue), with no subtitles."""
+    NARRATION is a sound played whole between two parts (a voice sample, a line of dialogue), with no subtitles.
+    more: the audio goes on after the text (the job's throwaway TAIL, or a stop_at), so render.py ends the part at
+    the pause after the last word instead of at the end of the file. start_at (late): the audio has more before the
+    text, so it starts at the pause before the first word: two takes of a chapter, each played where it was read
+    right, are dict(audio=old, job=..., stop_at="X") followed by dict(audio=new, job=..., start_at="X").
+    before / after: what the file reads before and after the text (so align_item finds the text in the right place);
+    tail: the job ended with the throwaway line."""
     items = getattr(proj, "NARRATION", None)
     if items is None:
         jobs = [j for j in jload(os.path.join(proj.DIR, "jobs", "voice_jobs.json")) if j["endpoint"] == "/voice/clone"]
@@ -108,11 +154,29 @@ def narration(proj):
     for it in items:
         if it.get("sound"):
             out.append(dict(audio=os.path.join(proj.DIR, it["audio"]), text="", sound=True)); continue
-        text = it.get("text") or find_job(proj, it["job"])["fields"]["text"]
+        job = None if it.get("text") else find_job(proj, it["job"])
+        text = it.get("text") or job["fields"]["text"]
+        more, tail, before, after = bool(it.get("stop_at") or it.get("more")), False, "", ""
+        if job and job.get("tail") and text.endswith(job["tail"]):
+            text, more, tail = text[:-len(job["tail"])].rstrip(), True, True
         if it.get("stop_at"):
-            text = text[:text.index(it["stop_at"])].rstrip()
-        out.append(dict(audio=os.path.join(proj.DIR, it["audio"]), text=text))
+            i = text.index(it["stop_at"])
+            text, after = text[:i].rstrip(), text[i:]
+        if it.get("start_at"):   # the rest of a re-read, after the part of the old take that was kept (stop_at)
+            i = text.index(it["start_at"])
+            before, text = text[:i], text[i:]
+        out.append(dict(audio=os.path.join(proj.DIR, it["audio"]), text=text, more=more, stop=bool(it.get("stop_at")),
+                        late=bool(it.get("start_at")), before=before, after=after, tail=tail))
     return out
+
+
+def align_item(it, words):
+    """align() for one narration() item: the whole text its file reads is aligned, then cut to the item's stretch. On
+    its own, a stretch from the middle (start_at) matched its first name to the same name said earlier in the file,
+    and played the file from the top (e07)."""
+    ct, info = align(it.get("before", "") + it["text"] + it.get("after", ""), words)
+    a = len(it.get("before", ""))
+    return ct[a:a + len(it["text"])], info
 
 
 def words_path(audio):

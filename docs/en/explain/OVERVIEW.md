@@ -31,12 +31,15 @@ Every batch that costs credits is quoted at full and off-peak price first and wa
 2. **The narrator's voice** (once per series): make a narrator say one line with text-to-video (put accent and manner in the line's direction, e.g. Taiwanese Mandarin, soft, like late-night radio), then take the voice out as a 5–15 s sample. Nobody has to record anything. The voice-clone API has no accent setting: the accent comes entirely from the sample.
 3. **Narration**:
    ```bash
-   python explain/narration.py P jobs          # parts of <= 1,100 characters split between chapters (the API takes 1,200), 50 credits each
+   python explain/narration.py P jobs          # parts of <= 1,100 characters split between chapters (the API takes 1,200), 50 credits each; --per-chapter: one part a chapter
    python dreamfab/aip_runner.py P/jobs/voice_jobs.json [--off-peak]
    python explain/narration.py P check         # speed, words to listen to, a missing ending, a voice that loops
    ```
+   - **Every part ends with a throwaway "謝謝收看" (thanks for watching)**: the voice service cuts off the last moment of what it reads, often half of the final syllable. What it cuts off is the throwaway line; the render ends the part at the pause before it, and it never reaches the video or the subtitles.
+   - **One part a chapter** (`--per-chapter`, or `VOICE_SPLIT = "chapter"` in `project.py`): no chapter is cut out of the middle of a file, and a misread chapter is read again on its own (50 credits). Eight chapters cost 400 credits, twice the four parts they would fit in.
+   - Chapters that share a file are cut at the pause found in the sound, not at the recogniser's word times (those run on over the pause and put the cut in the last syllable).
    - Words the voice tends to misread go in `SAY`: replaced by common characters of **the same length and sound** (宓妃→伏妃, 曹叡→曹銳, 二二〇→二二零). The subtitles keep the original. How to find them and the table we use: [when the AI voice misreads a word](../PRONUNCIATION.md).
-   - `check` compares script and transcript by pinyin, so homophones never raise an alarm. What it lists sounds different; your ears have the last word.
+   - `check` compares script and transcript by pinyin, so homophones never raise an alarm. What it lists sounds different; your ears have the last word. "nothing heard" marks words that came out as a noise the recogniser skipped; a file that ends in the middle of a sound (the last syllable cut off) is reported too.
    - Long parts sometimes **loop at the end**, repeating the last sentences. `check` says from which second. Cut it with `narration.py P cut voice/part2.flac SECONDS`, have the missing sentences read as a short extra part, and list both in `NARRATION`.
 4. **Pictures**:
    ```bash
@@ -103,7 +106,7 @@ All optional; without them an episode is made as above. The ad line ([ad/](../ad
 - **Bilingual subtitles**: put `> translation` on the line under each script line (say a Japanese line, then `> Chinese`). Then one script line is one subtitle (keep it to one row, about 26 characters) with its translation under it in a smaller face (`SUBS` `font2`, `size2`, `fill2`), and a second `.srt` in `RENDER["lang2"]` (default `zh-TW`) is written. Lines starting with `>` are not read aloud.
 - **Video clips as pictures**: `CLIPS = {"key": "path.mp4"}`; `("key:3.0", "first words", "", None)` in `SHOTS` plays it from 3.0 s across the whole picture (a vertical clip stands in the middle on a blurred copy of itself; move `frame` puts it in the gold frame). The clip's own sound is not used.
 - **A sound between two parts**: `dict(audio="voice/taiyu.wav", sound=True)` in `NARRATION` plays the file whole between the parts around it, with no subtitles (say, a real line of Taiwanese right after "it speaks Taiwanese too"). Cut the narration in two at that sentence first.
-- **Music straight through**: without `CH_MUSIC` the music plays from the top to the end, no sections per chapter: for a piece made for this video.
+- **Music straight through**: without `CH_MUSIC` the music plays from the top to the end, no sections per chapter: for a piece made for this video. Music shorter than the video plays again from the top, cross-faded, so the fact cards and the end card have music too.
 - **A variety-show look**:
   - `CARD = dict(colors=("#ffe14d", "#ff7eb3", "#7ad7ff"), tilt=-1.5)`: every picture on a tilted white card with a hard shadow over a three-colour gradient. A Short keeps the picture full size, without the card.
   - `SUBS = dict(style="pop", ...)`: yellow letters, a thick dark edge and a hard shadow.
@@ -120,7 +123,8 @@ All optional; without them an episode is made as above. The ad line ([ad/](../ad
 | `SCRIPT`, `VOICE` | the script, the narrator's sample |
 | `VOICE_FIELDS` | optional: more voice-clone fields, e.g. the dialect voice v3 `dict(voice_engine="voxcpm2", dialect="sichuan")` (write the script in the dialect's own words) |
 | `SAY` | (written, spoken) pairs of the same length |
-| `NARRATION` | optional: which audio files play (after a cut or a re-read) |
+| `NARRATION` | optional: which audio files play (after a cut or a re-read); `stop_at` / `start_at` play only the first / last stretch of a file, to take each take where it was read right |
+| `VOICE_SPLIT` | optional: `"chapter"` for one narration part a chapter |
 | `TITLE`, `ENDCARD` | the title after the opening (title, subtitle); the closing AI-made card |
 | `FACTS` | optional: the script's fact check, one quick card each after the narration (`[("heading", "line\nline"), ...]`, `FACTS_S` seconds each, default 2.4) over the darkened picture, before the AI-made card; full cut only |
 | `FONT` | (font family, folder): `python dreamfab/make_static_font.py NotoSerifTC-VF.ttf 600 "Explainer Serif" fonts/ExplainerSerif.ttf` |
