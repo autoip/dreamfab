@@ -122,7 +122,7 @@ a.box:hover img{transform:translateY(-4px)}
 .loose b{display:block;padding:6px 10px 0}.loose span{display:block;padding:0 10px 8px;color:var(--sub);font-size:12px}
 .stock{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px}
 .stock>div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;overflow-x:auto}
-.stock h3{margin:0 0 8px;font-size:15px}.stock table{border-collapse:collapse;width:100%;font-size:14px}
+.stock h3{margin:0 0 8px;font-size:15px}.stock h3 a.chan{font-weight:400;font-size:13px;margin-left:6px;word-break:break-all}.stock table{border-collapse:collapse;width:100%;font-size:14px}
 .stock th{font-weight:500;color:var(--sub);text-align:right;padding:4px 8px;white-space:nowrap}.stock th:first-child{text-align:left}
 .stock td{text-align:right;padding:5px 8px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
 .stock td:first-child{text-align:left}.stock tr.sum td{font-weight:600}.stock td i{font-style:normal;color:var(--sub);font-size:12px}
@@ -303,7 +303,13 @@ def stock_panel(racks, paths):
     cap, today = workflow("youtube.daily_max"), date.today()
     days = [(today - timedelta(days=i)).isoformat() for i in range(7)]
     right = []
+    names = youtube_log.channel_names()
     for ch, per in sorted(youtube_log.day_counts(7).items()):
+        name, handle = names.get(ch, (None, None))
+        url = youtube_log.channel_url(ch, handle)
+        shown = urllib.parse.unquote(url).split("//", 1)[1].removeprefix("www.")
+        label = ((E(name) if name else f"頻道 {E(ch[-6:])}")
+                 + f' <a class="chan" href="{E(url)}" target="_blank">{E(shown)} ↗</a>')
         n = per.get(days[0], (0, 0, 0))[2]
         top = max([cap or 0] + [v[2] for v in per.values()]) or 1
         head = (f'<div class="today{" over" if cap and n > cap else ""}">今天出貨 {n}' + (f'<span>／上限 {cap}・'
@@ -314,7 +320,7 @@ def stock_panel(racks, paths):
             f'<span class="b" title="上傳 {per.get(d, (0, 0, 0))[0]}・公開 {per.get(d, (0, 0, 0))[1]}"><i style="width:{per.get(d, (0, 0, 0))[2] / top:.0%}"></i>'
             + (f'<span class="cap" style="left:{cap / top:.0%}"></span>' if cap else "") + f'</span>'
             f'<span class="n">{per.get(d, (0, 0, 0))[2]}</span></div>' for d in days)
-        right.append(f'<div><h3>出貨・頻道 {E(ch[-6:])}</h3>{head}{bars}<p class="sub">一支影片當天上傳或公開都算一次，Shorts 也算；'
+        right.append(f'<div><h3>出貨・{label}</h3>{head}{bars}<p class="sub">一支影片當天上傳或公開都算一次，Shorts 也算；'
                      f'上限是工作流程開關 <code>youtube.daily_max</code></p></div>')
     return f'<div class="stock">{left}{"".join(right) or "<div class=sub>還沒有上架紀錄</div>"}</div>'
 

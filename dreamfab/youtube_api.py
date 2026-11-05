@@ -72,6 +72,11 @@ def channel(yt, lock=False, expect=None):
     YT_CHANNEL_ID, whichever is set."""
     ch = yt.channels().list(part="snippet,contentDetails", mine=True).execute()["items"][0]
     print(f"  channel     {ch['snippet']['title']} ({ch['id']})")
+    try:   # the library names the channel by it; never stop an upload over that
+        from dreamfab.youtube_log import remember_channel
+        remember_channel(ch)
+    except Exception as e:
+        print(f"  (channel name not kept: {e})")
     want = expect or os.environ.get("YT_CHANNEL_ID")
     if lock and want and ch["id"] != want:
         sys.exit(f"  !! logged in to channel {ch['id']}, expected {want}: delete {TOKEN} and log in again, "

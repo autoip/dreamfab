@@ -21,7 +21,7 @@ usage: python dreamfab/youtube_log.py add VIDEO ACTION [TEXT] [--project DIR] [-
        python dreamfab/youtube_log.py sync [ROOT ...]           import, then ask YouTube where each video stands
        python dreamfab/youtube_log.py stats [--days N]          per channel: out per day against the cap, in stock
 """
-import glob, json, os, sys
+import glob, json, os, sys, urllib.parse
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
@@ -103,6 +103,35 @@ STATUS = ("CREATE TABLE IF NOT EXISTS youtube_status (video TEXT PRIMARY KEY, ch
           "published_at TEXT, title TEXT, checked TEXT)")
 
 
+CHANNELS = "CREATE TABLE IF NOT EXISTS youtube_channels (id TEXT PRIMARY KEY, title TEXT, handle TEXT, checked TEXT)"
+
+
+def remember_channel(ch):
+    """Keep a channel's name and handle (an item of channels().list with its snippet) for the library's pages."""
+    sn = ch.get("snippet") or {}
+    db = connect()
+    db.execute(CHANNELS)
+    with db:
+        db.execute("INSERT OR REPLACE INTO youtube_channels VALUES (?, ?, ?, ?)",
+                   (ch["id"], sn.get("title"), sn.get("customUrl"), datetime.now().isoformat(timespec="seconds")))
+    db.close()
+
+
+def channel_names():
+    """{channel id: (name, handle)} for every channel a login has shown (youtube_api.channel(), sync)."""
+    db = connect()
+    db.execute(CHANNELS)
+    try:
+        return {i: (t, h) for i, t, h in db.execute("SELECT id, title, handle FROM youtube_channels")}
+    finally:
+        db.close()
+
+
+def channel_url(cid, handle=None):
+    """The channel's page: by its handle (@…) when known, else by its id."""
+    return f"https://www.youtube.com/{urllib.parse.quote(handle, safe='@')}" if handle else f"https://www.youtube.com/channel/{cid}"
+
+
 def local(ts):
     """A YouTube UTC time (2026-10-31T01:34:00Z) as local time without a zone, like the log's own entries."""
     return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().replace(tzinfo=None).isoformat(timespec="seconds")
@@ -116,7 +145,8 @@ def sync(roots=("projects",)):
     db, yt = connect(), youtube()
     db.execute(STATUS)
     logged = {v for (v,) in db.execute("SELECT video FROM youtube_log WHERE action = 'upload'")}
-    for ch in yt.channels().list(part="contentDetails", mine=True).execute()["items"]:   # uploads made by hand in Studio
+    for ch in yt.channels().list(part="snippet,contentDetails", mine=True).execute()["items"]:   # uploads made by hand in Studio
+        remember_channel(ch)
         tok = None
         while True:
             r = yt.playlistItems().list(part="snippet", playlistId=ch["contentDetails"]["relatedPlaylists"]["uploads"],
