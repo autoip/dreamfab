@@ -39,8 +39,9 @@ Dreamfab 是讓 AI Agent（Claude Code、Codex，也實測過 Grok Bot）自動�
 
 一整季的 MV 系列：[《國風淒美對唱》播放清單](https://www.youtube.com/playlist?list=PLfoBI7oPycHg)，6 集，同一套畫面和包裝，每集換一種曲風。
 
-**新聞**：用新聞線做的財經新聞，同一位 AI 主播。
+**AI 自動化新聞**：用新聞線做的財經新聞，同一位 AI 主播；每天的美股一分鐘從查新聞、寫稿、配音、上字卡到上架，都是排程自動跑完。
 
+- ▶ 頻道「AutoIP財經新聞」，每天一支，都在 Shorts：https://www.youtube.com/@AutoIP%E8%B2%A1%E7%B6%93%E6%96%B0%E8%81%9E/shorts
 - ▶ 美股一分鐘：每天台股開盤前，一分鐘看懂昨晚美股，無人值守自動做完、上架：https://youtu.be/NupJ10Z46xg
 - ▶ 深度報導〈Lumentum 為什麼紅？光，為什麼是 AI 的命脈〉，3 分 47 秒：https://youtu.be/SR1r42OAaXg
 

@@ -39,8 +39,9 @@ Each series is a world of its own (`projects/<series>/`); its actors and voices 
 
 A whole season of MVs: the [《國風淒美對唱》 playlist](https://www.youtube.com/playlist?list=PLfoBI7oPycHg), 6 episodes with one look and packaging, a different genre each.
 
-**News**: market news from the news line, with one AI anchor.
+**AI-automated news**: market news from the news line, with one AI anchor; the daily one-minute brief is researched, written, voiced, carded and uploaded by a scheduled run with no one there.
 
+- ▶ The channel, AutoIP財經新聞, one a day, all in Shorts: https://www.youtube.com/@AutoIP%E8%B2%A1%E7%B6%93%E6%96%B0%E8%81%9E/shorts
 - ▶ A one-minute US-markets brief before the Taiwan open, made and uploaded unattended every day: https://youtu.be/NupJ10Z46xg
 - ▶ An in-depth report, why Lumentum took off and why AI runs on light (3:47): https://youtu.be/SR1r42OAaXg
 
