@@ -12,6 +12,7 @@ Cloned voices sound good but misread words: a character with two readings gets t
 | Terms | 光纖, 叢集, 女媧 | 纖 as qiān, 叢 wrong |
 | Numbers and symbols | 二〇二八, 1,143, 1.6T | 〇 as "circle", commas and points read oddly |
 | English letters and names | ADR, Dow Jones | sometimes spelled out, sometimes guessed in Chinese |
+| Traditional characters | 廣告, 下載, 學習 | 槓購, 下賊, 學士; right when the same text is in simplified (AutoIP converts it now) |
 
 ## Finding them
 1. **The check**:
@@ -46,7 +47,7 @@ exec(open(os.path.join(os.path.dirname(__file__), "..", "錯音表.py"), encodin
 SAY = SAY + [("範圍，最快", "範圍。最快")]   # a swap for one sentence of this episode stays here
 ```
 
-**Dreamfab's own table is public in [`dreamfab/say_zh.py`](../../dreamfab/say_zh.py)**: the daily news and the in-depth reports both read it, and you can use it as it is. It was found with one voice (a Taiwanese-accented anchor on AutoIP's default engine); another voice may need fewer pairs, or others.
+**Dreamfab's own table is public in [`dreamfab/say_zh.py`](../../dreamfab/say_zh.py)**: the daily news and the in-depth reports both read it, and you can use it as it is. It was found with one voice (a Taiwanese-accented anchor on AutoIP's default engine); another voice may need fewer pairs, or others. AutoIP now turns traditional characters into simplified ones before reading (see "Trouble that is not a misread" below), so the table keeps only what the script does not explain; with a service that reads traditional as it is, the pairs marked "no longer needed" below may have to come back.
 
 ```python
 from dreamfab.say_zh import SAY
@@ -68,7 +69,7 @@ SAY = SAY + [("範圍，最快", "範圍。最快")]
 ## Trouble that is not a misread
 - **The last syllable is cut off**: the voice service cuts off the last moment of what it reads; measured, nearly every file ended in the middle of a sound. On the explainer line every part ends with a throwaway "謝謝收看", cut off at the pause before it (`TAIL` in `explain/common.py`). Ending in "……" did not help.
 - **A word comes out as a noise**: the recogniser hears nothing there, and `check` marks it "nothing heard". Seen with an English name followed straight by a Chinese verb (the 買 of "AppLovin Ads 買廣告"); one more word between them ("Ads 平台買廣告") fixed it.
-- **When no same-sounding traditional character works, try simplified**: 廣告 was read as 槓購 all through an episode; 廣誥 and 獷告 did not help, simplified 广告 did, and so did 报告 for 報告. The reading is the same and the subtitles keep the original.
+- **Misreads caused by traditional characters: AutoIP converts to simplified now**: the voice model was most likely trained on simplified Chinese and stumbles on traditional characters. 廣告 was read as 槓購 all through an episode; 廣誥 and 獷告 did not help, only simplified 广告 did. The whole of in-depth report EP7 (about 3,000 characters) was read twice in traditional and twice in simplified, with no table: both recognisers heard 94 misreads in traditional and 6 in simplified. All 94 sat on or next to a character written differently in the two scripts, and both takes went wrong in exactly the same places. Since 2026-11-06 AutoIP turns traditional characters into simplified ones, one by one, before its voice reads them: send traditional as it is, and the subtitles keep your own text. The same parts sent in traditional again went from 47 misreads to 3, and the audio was identical to the simplified takes. With another voice service, convert it yourself with OpenCC's `t2s` (character by character, so the length and subtitle timing stay the same).
 - **Swap only what both recognisers hear wrong**: a word is not misread every time, and recognisers mishear too. One recogniser alone (medium or large-v3) is usually the recogniser; both of them, or your ears, mean a pair for the table.
 - **Where chapters are cut**: the recogniser's word times run on over a pause, so a cut there takes off the end of the last syllable. The explainer line cuts at the pause found in the sound.
 
@@ -140,15 +141,19 @@ From this project's explainers, in-depth reports and daily news. Copy all of it 
 | 外洩 | 外謝 | 洩 is xiè |
 | 併購 | 病夠 | 併 is bìng; the user's ear picked these |
 | 飆漲 | 標漲 | 飆 is biāo |
-| 贊助 | 讚助 | 贊 was heard as 根 |
+| 布蘭特 | 步蘭特 | heard as 波蘭特 |
 
 **Common words read wrong too** (both recognisers heard the misread)
 | Subtitle | Read as | Subtitle | Read as | Subtitle | Read as |
 |---|---|---|---|---|---|
-| 廣告 | 广告 (simplified) | 報告 | 报告 (simplified) | 資料 | 姿料 |
+| 資料 | 姿料 | 註冊 | 註策 | 機關 | 基關 |
+
+**No longer needed: caused by traditional characters** (since 2026-11-06 AutoIP converts to simplified before reading, and these come out right unchanged; only a service that reads traditional as it is needs them)
+| Subtitle | Read as | Subtitle | Read as | Subtitle | Read as |
+|---|---|---|---|---|---|
+| 廣告 | 广告 (simplified) | 報告 | 报告 (simplified) | 贊助 | 讚助 |
 | 下載 | 下再 | 學習 | 學席 | 推薦 | 推見 |
 | 獎勵 | 獎麗 | 蒐集 | 搜集 | 訴訟 | 訴送 |
-| 註冊 | 註策 | 機關 | 基關 | | |
 
 **Numbers**
 | Subtitle | Read as | Note |
