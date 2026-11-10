@@ -126,6 +126,7 @@ python mv/youtube_upload.py PROJECT_DIR --update                  # 改了 SEO �
 - 已上傳的影片 ID 和頻道記在 `PROJECT_DIR/youtube.json`，重跑不會重複上傳，也不會傳到別的頻道。
 - 上傳前會查頻道最近 50 支影片：標題裡有同一個《片名》、而且同樣是（或同樣不是）Shorts，就停下來。在 Studio 手動傳過的也擋得到：把那支的 ID 記進 `youtube.json`，或加 `--allow-duplicate`。
 - `--title` 選標題，也選縮圖：`thumbnails/thumb_<字母>_*.jpg`。
+- 一首歌做好幾支 Shorts（例如三種預告）：每支是一組剪輯 `EDITS["shorts_a"]`、`EDITS["shorts_b"]`…，用 `--shorts shorts_b` 上傳。標題寫成 `Shorts（shorts_b）標題：…`，說明欄區段標題也寫上 `shorts_b`；沒寫到的就用第一個 Shorts 標題和 Shorts 說明欄。這幾支是同一首歌，重複檢查改成比整個標題。
 
 **`YouTube_SEO.txt` 裡給腳本讀的區段**（用 `==== 區段標題 ====` 分段，看標題裡有沒有這些字）
 

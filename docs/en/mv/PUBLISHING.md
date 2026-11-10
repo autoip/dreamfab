@@ -126,6 +126,7 @@ python mv/youtube_upload.py PROJECT_DIR --update                  # SEO file cha
 - Uploaded video ids and the channel are kept in `PROJECT_DIR/youtube.json`, so a rerun never uploads twice or to another channel.
 - Before uploading, the script checks the channel's latest 50 uploads: one whose title has the same 《title》 and is (or is not) a Short in the same way stops it. That also catches copies uploaded by hand in Studio: record that id in `youtube.json`, or pass `--allow-duplicate`.
 - `--title` picks the title and the thumbnail: `thumbnails/thumb_<letter>_*.jpg`.
+- Several Shorts for one song (three teasers, say): each is an edit, `EDITS["shorts_a"]`, `EDITS["shorts_b"]`, ..., uploaded with `--shorts shorts_b`. Write its title as `Shorts（shorts_b）標題：…` and put `shorts_b` in its description header too; without them it gets the first Shorts title and the Shorts description. Since they are the same song, the duplicate check compares whole titles for them.
 
 **Sections of `YouTube_SEO.txt` the script reads** (split on `==== header ====`, matched by words in the header)
 

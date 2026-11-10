@@ -1,8 +1,10 @@
 """Upload a finished MV (or its Shorts cut) to YouTube with the copy in YouTube_SEO.txt (YouTube Data API v3).
 
-usage: python mv/youtube_upload.py PROJECT_DIR [--shorts] [--title A] [--dry-run] [options]
+usage: python mv/youtube_upload.py PROJECT_DIR [--shorts [EDIT]] [--title A] [--dry-run] [options]
        python mv/youtube_upload.py --whoami     log in (or reuse the login) and print which channel it uploads to
-  --shorts               the vertical cut (EDITS["shorts"]) with the Shorts title, instead of the full MV
+  --shorts [EDIT]        the vertical cut (EDITS["shorts"]) with the Shorts title, instead of the full MV; name another
+                         edit (--shorts shorts_b) for a second or third Short: the Shorts title line and the Shorts
+                         description header that name it (Shorts（shorts_b）標題：…) are used for it
   --title A|B|C          which candidate title from the 標題 section (default A); also picks the thumbnail letter
   --privacy P            private | unlisted | public (default: the workflow switch youtube.privacy, private: check it
                          in YouTube Studio, publish there)
@@ -39,7 +41,7 @@ from dreamfab.workflow import get as workflow
 ap = argparse.ArgumentParser()
 ap.add_argument("project", nargs="?")
 ap.add_argument("--whoami", action="store_true")
-ap.add_argument("--shorts", action="store_true")
+ap.add_argument("--shorts", nargs="?", const="shorts", metavar="EDIT")
 ap.add_argument("--title", default="A")
 ap.add_argument("--privacy", choices=["private", "unlisted", "public"])
 ap.add_argument("--publish-at")
@@ -69,7 +71,7 @@ if A.whoami or not A.project:
 
 proj = load_project(A.project)
 D = proj.DIR
-KIND = "shorts" if A.shorts else "full"
+KIND = A.shorts or "full"
 LANG = proj.RENDER.get("lang", "zh-TW")
 problems = []
 
@@ -89,7 +91,7 @@ titles = dict(re.findall(r"^([A-Z])\.\s*(.+?)\s*$", tsec, flags=re.M))
 lines, short_title = tsec.splitlines(), ""
 for i, l in enumerate(lines):
     m = re.search(r"(?:Shorts|直式).*?[：:]\s*(.*)$", l)
-    if m:   # "1 分鐘直式版（Shorts）標題：" with the title on the same line or the next one
+    if m and (KIND == "shorts" or KIND in l[:m.start(1)]):   # "1 分鐘直式版（Shorts）標題：" with the title on the same line or the next one
         short_title = m[1].strip() or next((n.strip() for n in lines[i + 1:] if n.strip()), "")
         break
 title = short_title if A.shorts else titles.get(A.title.upper(), "")
@@ -98,7 +100,8 @@ descs = pick("說明欄", "Description")
 main = [b for h, b in descs if "Shorts" not in h]
 api = [b for h, b in descs if "API" in h and "Shorts" not in h]
 desc = ((api or main or [""])[0] if not A.shorts else
-        next((b for h, b in descs if "Shorts" in h), (api or main or [""])[0])).strip()
+        next((b for h, b in descs if "Shorts" in h and KIND in h),
+             next((b for h, b in descs if "Shorts" in h), (api or main or [""])[0]))).strip()
 
 tags = [t.strip() for t in re.split(r"[,，\n]", "\n".join(b for _, b in pick("標籤", "Tags"))) if t.strip()]
 tag_cost = sum(len(t) + (2 if " " in t else 0) for t in tags) + max(len(tags) - 1, 0)   # spaces -> counted with quotes
@@ -207,10 +210,10 @@ if want and cid != want:
     sys.exit(f"  !! logged in to channel {cid}, expected {want} (YT_CHANNEL_ID / youtube.json): delete "
              f"{os.path.join(os.path.dirname(SECRET), 'youtube_token.json')} and log in again, picking the right channel")
 if not done and not A.allow_duplicate:   # also catches copies uploaded by hand in Studio
-    key = (re.findall(r"《(.+?)》", title) or [title])[0]
+    key = title if KIND not in ("full", "shorts") else (re.findall(r"《(.+?)》", title) or [title])[0]   # 2nd/3rd Short: same song
     r = yt.playlistItems().list(part="snippet", playlistId="UU" + cid[2:], maxResults=50).execute()
     dup = [(i["snippet"]["resourceId"]["videoId"], i["snippet"]["title"]) for i in r["items"]
-           if key in i["snippet"]["title"] and ("#shorts" in i["snippet"]["title"].lower()) == A.shorts]
+           if key in i["snippet"]["title"] and ("#shorts" in i["snippet"]["title"].lower()) == bool(A.shorts)]
     if dup:
         sys.exit("  !! already on the channel: " + "; ".join(f"https://youtu.be/{v} {t}" for v, t in dup)
                  + f" -> record it in {state_p} as {KIND!r}, or pass --allow-duplicate")
