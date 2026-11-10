@@ -41,8 +41,11 @@ def _creds(scopes):
         print("  the saved login does not cover", ", ".join(s.rsplit("/", 1)[-1] for s in scopes if s not in (creds.scopes or [])))
         creds = None
     if creds and not creds.valid and creds.refresh_token:
+        from google.auth.exceptions import TransportError
         try:
             creds.refresh(Request())
+        except TransportError:   # the network failed, not the login: no new login in the browser (a timeout opened one)
+            raise
         except Exception as e:   # revoked, or a consent screen left in Testing (logins expire after 7 days)
             print("  login expired:", e)
             creds = None

@@ -96,15 +96,15 @@ a.crate:hover{border-color:var(--lc)}
 .feed{margin-top:10px;font-size:13px;color:var(--sub)}.feed code{background:var(--chip);border-radius:6px;padding:1px 6px;color:var(--ink)}
 .soon{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .soon .line{background:transparent;border-style:dashed;margin:0;align-items:center}.soon .plate{background:var(--chip);color:var(--sub)}
-.racks{display:grid;gap:16px}
-.rack{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px 16px}
+.racks{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.rack{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px 16px}
 .rack-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:10px}
 .code{font:600 12px ui-monospace,Consolas,monospace;background:var(--lc);color:var(--on);border-radius:4px;padding:1px 7px}
 .rack-head h3{margin:0;font-size:17px}.rack-head h3 a{color:var(--ink);text-decoration:none}.rack-head h3 a:hover{color:var(--accent)}
 .rack-head .go{margin-left:auto;font-size:13.5px;text-decoration:none}
 .frame{border-left:6px solid var(--rack);border-right:6px solid var(--rack);padding:0 10px}
 .tier{padding-top:10px}.tier-label{display:inline-block;font-size:12px;color:var(--sub);border:1px solid var(--line);border-radius:4px;padding:0 6px;margin-bottom:6px;background:var(--bg)}
-.shelf{display:flex;gap:10px;align-items:flex-end;overflow-x:auto;padding:5px 2px 0;border-bottom:7px solid var(--rack)}
+.shelf{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:5px 2px 0;border-bottom:7px solid var(--rack)}
 .rack{--w:164px;--ar:16/9}.rack.tall{--w:78px;--ar:9/16}
 .box{flex:none;width:var(--w);position:relative;color:var(--ink);text-decoration:none;font-size:12px;padding-bottom:5px}
 .box img,.box .ph{display:block;width:100%;aspect-ratio:var(--ar);object-fit:cover;border-radius:4px;background:var(--chip);box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .15s}
