@@ -139,6 +139,7 @@ All optional; without them an episode is made as above. The ad line ([ad/](../ad
 | `CLIPS` | optional: video clips, `"key:second"` in `SHOTS` (see "Other languages...") |
 | `CARD`, `STICKERS`, `STICKER_FONT`, `LABELS` | optional: the variety-show look (same section) |
 | `CUTS`, `FILM` | optional: shorter cuts (16:9, 9:16, 1:1; `render.py P --cut NAME`) and a cinema look; SUBS style `box` puts subtitles on white boxes. See [the ad line](../ad/OVERVIEW.md) |
+| `OUTRO` | optional: a closing clip shared by a series, such as the host asking viewers to subscribe. `dict(wide="16:9 clip.mp4", tall="9:16 clip.mp4", srt="its subtitles.srt")`, with paths from the episode folder. It is joined onto the end of the full cut and every Short, and its subtitles are added to the end of the .srt. Make it once and set it in the file the series' episodes all read |
 
 ## Lessons
 

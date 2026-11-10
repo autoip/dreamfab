@@ -28,7 +28,8 @@ Needs images/<id>.png|jpg (voice/*.words.json are made on the first run, or by n
 FACTS = [("heading", "line\\nline"), ...]: the script's fact check, one card each (FACTS_S seconds, default 2.4: quick,
 pause to read) over the darkened last picture, between the narration and the end card. Full cut only.
 SUBS = dict(style=outline | heavy | gold | band, font=a family in FONT's folder, size=58): the subtitle look the user
-picked from explain/sub_styles.py (default: outline, FONT's family, 58).
+picked from explain/sub_styles.py (default: outline, FONT's family, 58); chars=12: at most that many characters on a
+line (default: what fits 3/4 of the width; large subtitles for older viewers).
 Writes out/NAME.mp4 and out/NAME.<lang>.srt (YouTube indexes uploaded captions for search).
 SHOTS = [(image, first words, move, focus)]: the picture comes in when the narration reaches those words (searched in
 order). move: in / out (zoom towards / away from focus=(x, y) in 0..1), left / right (pan), frame (whole picture in a
@@ -45,6 +46,9 @@ x=, y=, rot=, color="#rrggbb", ink="#rrggbb", size=64, dur=2.6, sfx="sfx/pop.wav
 box (and play its sound) where the narration reaches the phrase, x and y on the 16:9 picture (STICKER_FONT: its font);
 LABELS = dict(chap=(fill, edge), title=(fill, edge)) recolours the chapter labels and the title (ASS &HBBGGRR colours).
 A film look: FILM = dict(bars=130, warm=0.08, vignette=0.35) adds black bars (wide cuts only), a warm grade and a vignette.
+A closing clip: OUTRO = dict(wide="../outro/out/outro_169.mp4", tall="../outro/out/outro_916.mp4", srt="../outro/out/x.srt")
+(paths from the project folder) is joined onto the end of every cut, the full one and each Short (wide for 16:9, tall for
+the others), with its subtitles added to the end of the .srt: a series' one call to subscribe, made once.
 """
 import os, subprocess, sys
 import numpy as np
@@ -120,6 +124,9 @@ def build():
     suffix = f"_{cut}" if cut else getattr(proj, "EDITS", {}).get("shorts", {}).get("suffix", "_shorts") if S else ""
     out = os.path.join(D, args[args.index("--out") + 1] if "--out" in args else f"out/{proj.NAME}{suffix}.mp4")
     work = os.path.join(D, "out", f"_work_{cut}" if cut else "_work_shorts" if S else "_work"); os.makedirs(work, exist_ok=True)
+    o = getattr(proj, "OUTRO", None)
+    if o and not until and not os.path.exists(os.path.join(D, o.get("wide" if aspect == "16:9" else "tall", ""))):
+        sys.exit(f"OUTRO: {o.get('wide' if aspect == '16:9' else 'tall')} is not made yet: make the closing clip first")
     gaps = dict(dict(lead=1.6, chapter=1.4, title=3.4, part=0.4, end=5.5, xfade=0.9), **getattr(proj, "GAPS", {}))
     if S:   # a Short starts on the first word, cuts tight and ends on its closing line
         gaps.update(lead=0.3, part=0.45, end=3.0, xfade=0.6)
@@ -370,11 +377,13 @@ def build():
         b = round(16 * size / 64)   # the box's padding grows with the letters; a dark box 5 px larger behind it is the outline
         ass.append(f"Dialogue: 3,{at}\\bord{b + 5}\\3c&H222222&\\1c&H222222&{pop}}}{st['text']}")
         ass.append(f"Dialogue: 4,{at}\\bord{b}\\shad0\\3c{bgr(col)}\\1c{bgr(ink)}{pop}}}{st['text']}")
-    def fit(s, n=13):   # a line too wide for the screen breaks in two, at a comma near its middle if there is one
+    def fit(s, n=13, half_of=False):   # a line too wide for the screen breaks in two, at a comma near its middle if
+        # there is one; a half that would still run off the screen (over about 1.45 n) breaks again (e05's Short: a
+        # 25-character clause after 「今年八月，」 ran off a phone)
         """Latin letters and spaces count about half a character. Break after a comma, else at a space (Korean),
         else anywhere but inside a word in Latin letters."""
         wide = [0.55 if ord(c) < 128 else 1.0 for c in s]
-        if sum(wide) <= n:
+        if sum(wide) <= (1.45 * n if half_of else n):
             return s
         half = sum(wide) / 2
         at = lambda k: abs(sum(wide[:k]) - half)
@@ -382,7 +391,7 @@ def build():
         cut = min([k + 1 for k, c in enumerate(s) if c in "，、：," and 3 < k < len(s) - 3]
                   or [k for k, c in enumerate(s) if c == " " and 2 < k < len(s) - 2]
                   or [k for k in range(2, len(s) - 1) if not (word(s[k - 1]) and word(s[k]))], key=at)
-        return s[:cut].rstrip() + "\\N" + s[cut:].lstrip()
+        return fit(s[:cut].rstrip(), n, True) + "\\N" + fit(s[cut:].lstrip(), n, True)
     if vert:
         # bilingual lines run to three or four rows: hang them from just under the picture so they grow downwards
         hang = f"{{\\an8\\pos({OW // 2},{pic_y + pic_h + 36})}}" if tr or aspect == "1:1" else ""
@@ -393,7 +402,7 @@ def build():
             ass.append(f"Dialogue: 1,{ass_time(0)},{ass_time(total)},Head,,0,0,0,,{{\\fad(300,600)\\an8{hs}\\pos({OW // 2},"
                        f"{hy})}}{head}")
     else:   # a Chinese character is about 0.8 of the font size wide: a line longer than 3/4 of the picture breaks in two
-        n = int(0.75 * W / (0.8 * sub["size"]))
+        n = sub.get("chars") or int(0.75 * W / (0.8 * sub["size"]))
         ass += sub_events(sub, [(a, b, both(fit(s, n), t2 and fit(t2, int(n / 0.72)))) for a, b, s, t2 in subs], W, H)
     for t0, name in chaps if getattr(proj, "CHAPTER_LABELS", True) else []:   # an ad of 30 s needs no chapter names
         st = 0.5 if t0 < LEAD + 1 else t0 - 0.2
@@ -410,10 +419,19 @@ def build():
         ass.append(f"Dialogue: 3,{ass_time(narr_end + 0.2)},{ass_time(total - 0.1)},Head,,0,0,0,,{{\\fad(400,300)\\an5"
                    f"\\fs74\\pos({OW // 2},{y})}}{S['end']}")
         if endcard:
+            note, at = endcard, f"\\an5\\fs36\\pos({OW // 2},{y + 90})"
+            if vert:   # a phone is narrow: the note hangs under the end line, a line per ｜ part, a long part in two
+                note = "\\N".join(fit(s, int(0.9 * OW / 42)) for s in endcard.split("｜"))
+                at = f"\\an8\\fs36\\pos({OW // 2},{y + 60})"
             ass.append(f"Dialogue: 3,{ass_time(narr_end + 0.5)},{ass_time(total - 0.1)},TitleSub,,0,0,0,,{{\\fad(400,300)"
-                       f"\\an5\\fs36\\pos({OW // 2},{y + 90})}}{endcard}")
+                       f"{at}}}{note}")
     elif endcard and not until and not S:
-        ass.append(f"Dialogue: 1,{ass_time(end_at)},{ass_time(total - 0.2)},TitleSub,,0,0,0,,{{\\fad(600,400)\\fs54\\pos(960,1000)}}{endcard}")
+        note, at = endcard, "\\pos(960,1000)"
+        n = int(0.9 * OW / 54)
+        if sum(0.55 if ord(c) < 128 else 1.0 for c in endcard) > n:   # e12's note (AI + a disclosure) ran off both sides:
+            note = "\\N".join(fit(s, n) for s in endcard.split("｜"))   # a line per ｜ part, rising from the bottom
+            at = f"\\an2\\pos(960,{OH - 36})"
+        ass.append(f"Dialogue: 1,{ass_time(end_at)},{ass_time(total - 0.2)},TitleSub,,0,0,0,,{{\\fad(600,400)\\fs54{at}}}{note}")
     if facts:   # 查證 above, then one card at a time: the heading in gold, the facts under it
         f_end = facts_t0 + len(facts) * fact_s
         ass.append(f"Dialogue: 1,{ass_time(facts_t0)},{ass_time(f_end)},TitleSub,,0,0,0,,{{\\fad(300,300)\\fs50\\pos(960,280)}}查證")
@@ -623,9 +641,33 @@ def build():
     enc.stdin.close(); enc.wait()
     for c in clips.values():
         c.p.kill()
+    outro = getattr(proj, "OUTRO", None)
+    clip = outro and not until and outro.get("wide" if aspect == "16:9" else "tall")
+    tail_rows = []
+    if clip:   # the series' closing clip (a call to subscribe) after every cut: its wide copy for 16:9, its tall one otherwise
+        clip = os.path.join(D, clip)
+        body = os.path.splitext(out)[0] + "_body.mp4"
+        os.replace(out, body)
+        norm = f"fps={FPS},scale={OW}:{OH},setsar=1,format=yuv420p"
+        aud = "aresample=48000,aformat=channel_layouts=stereo"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", body, "-i", clip, "-filter_complex",
+                        f"[0:v]{norm}[v0];[1:v]{norm}[v1];[0:a]{aud}[a0];[1:a]{aud}[a1];[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]",
+                        "-map", "[v]", "-map", "[a]", *venc("final"), "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", out],
+                       check=True)
+        os.remove(body)
+        shift = round(total * FPS) / FPS
+        srt = outro.get("srt") and os.path.join(D, outro["srt"])
+        if srt and os.path.exists(srt):   # its subtitles go on the end of the caption track too
+            sec = lambda s: (lambda h, m, x: int(h) * 3600 + int(m) * 60 + float(x.replace(",", ".")))(*s.strip().split(":"))
+            for block in open(srt, encoding="utf-8").read().strip().split("\n\n"):
+                ls = block.split("\n")
+                a, b = ls[1].split(" --> ")
+                tail_rows.append((shift + sec(a), shift + sec(b), "\n".join(ls[2:])))
+        total = shift + float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", clip],
+                                             capture_output=True, text=True).stdout)
     langs = [(lang, 2)] + ([(getattr(proj, "RENDER", {}).get("lang2", "zh-TW"), 3)] if tr else [])
     for code, k in langs:   # one .srt per language: YouTube takes each as its own caption track
-        rows = [(e[0], e[1], e[k]) for e in subs if e[k]]
+        rows = [(e[0], e[1], e[k]) for e in subs if e[k]] + (tail_rows if k == 2 else [])
         open(os.path.splitext(out)[0] + f".{code}.srt", "w", encoding="utf-8").write(
             "".join(f"{n + 1}\n{srt_time(a)} --> {srt_time(b)}\n{s}\n\n" for n, (a, b, s) in enumerate(rows)))
     print(f"{os.path.relpath(out, D)}  {total:.1f} s, {len(subs)} subtitle lines, {len(shots)} pictures, chapters at "

@@ -134,6 +134,7 @@ projects/<系列>/
 | `CLIPS` | 選用：影片片段，`SHOTS` 用 `"代號:秒"`（見「外語、雙語字幕……」） |
 | `CARD`、`STICKERS`、`STICKER_FONT`、`LABELS` | 選用：綜藝包裝（同上） |
 | `CUTS`、`FILM` | 選用：短版（16:9、9:16、1:1，`render.py P --cut 名稱`）、電影感；SUBS 的 `box` 白底方框字幕。見[廣告線](../ad/OVERVIEW.md) |
+| `OUTRO` | 選用：公版片尾，例如主持人催訂閱。`dict(wide="16:9 的片尾.mp4", tall="9:16 的片尾.mp4", srt="片尾字幕.srt")`（路徑從該集資料夾算起）。長片和每支 Shorts 的最後都會接上，字幕也接在 .srt 最後。做一次，整個系列共用：寫在系列共用的設定檔，每集的 project.py 再讀進來 |
 
 ## 學到的事
 
