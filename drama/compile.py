@@ -13,7 +13,9 @@ COMP_DIR/project.py:
                                                           #  start: seconds off its beginning, e.g. an intro card)
             dict(clips=[("../s1e01_x", 2.4, 6.4), ...], chapter="Highlights", flash=0.12, sfx="../sfx/hit.wav")]
                                                           # a hook: pieces of the finished episodes (seconds on their
-                                                          # out/<NAME>.mp4), joined with a white flash and the sfx
+                                                          # out/<NAME>.mp4), joined with a white flash and the sfx;
+                                                          # a piece can also be any video ("../mv/out/x.mp4", a, b),
+                                                          # with x.<lang>.srt next to it if it has one
   RENDER = dict(lufs=-16, lang="zh-TW", fps=25); TYPO = dict(font=..., accent=...) for the cards
            episode_suffix="_hd60": take an episode's out/<NAME>_hd60.mp4 (another EDITS render, e.g. 60 fps made after
            the 25 fps one was published) where there is one, else out/<NAME>.mp4
@@ -85,6 +87,10 @@ for p in proj.PARTS:
     elif "clips" in p:
         items = []
         for ep, a, b in p["clips"]:
+            if ep.endswith(".mp4"):   # a piece of any finished video, e.g. an MV
+                src = os.path.join(D, ep)
+                items.append(dict(src=src, a=a, nf=round((b - a) * FPS), srt=f"{src[:-4]}.{R['lang']}.srt"))
+                continue
             e = load_project(os.path.join(D, ep))
             items.append(dict(src=os.path.join(e.DIR, "out", ep_name(e) + ".mp4"), a=a, nf=round((b - a) * FPS),
                               srt=os.path.join(e.DIR, "out", f"{ep_name(e)}.{R['lang']}.srt")))
@@ -98,7 +104,10 @@ segs = []
 for n, p in enumerate(parts):
     out = os.path.join(WORK, f"part_{n:02d}.mp4")
     if p["kind"] == "card":
-        nb = parts[n + 1] if p["bg"] == "next" else parts[n - 1]
+        k = n + 1 if p["bg"] == "next" else n - 1
+        while parts[k]["kind"] == "card":   # cards in a row: all over the first real part next to them
+            k += 1 if p["bg"] == "next" else -1
+        nb = parts[k]
         at = ["-ss", f"{nb.get('start', 0.0) + 0.3:.3f}"] if p["bg"] == "next" else ["-sseof", "-0.1"]
         src = nb.get("src")
         if nb["kind"] == "clips":   # the hook's first / last piece, on its episode
