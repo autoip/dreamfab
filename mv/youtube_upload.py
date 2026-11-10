@@ -22,6 +22,14 @@ Copy comes from PROJECT_DIR/YouTube_SEO.txt, split on "==== header ====" lines:
                        a header that also says Shorts is the Shorts description (falls back to the main one);
                        {full} is replaced with the link of the full MV once it is uploaded (upload the full MV first)
   標籤 / Tags          comma separated
+  搜尋字 / Keywords    optional: words people search for that the title may miss (the poem, an alias, a famous line)
+With the workflow switch youtube.links on, a NEW upload's description ends with a links block (saved in youtube.json,
+so --update keeps it; videos uploaded without one stay as they are): up to 3 of the series' other uploads (the next
+episodes first, then the ones before; a compilation links the other compilations), the --playlist link, and a 🔎 line
+of search words (the 《》 names of the title + 搜尋字) not already in the description, each also in simplified Chinese
+when opencc is installed (pip install opencc-python-reimplemented); the new words go into the tags too while they fit.
+A Short gets the full MV's link instead of the other episodes. YouTube has no API for a Short's related video or for
+end screens: the script prints them as Studio steps.
 Credentials: YT_CLIENT_SECRET = an OAuth client of type "Desktop app" (default
 ~/.config/dreamfab/youtube_client_secret.json; dreamfab/youtube_api.py); the login is cached next to it as youtube_token.json.
 Keep both outside the repo. One Google account can own several channels (brand accounts): the login asks which one,
@@ -112,6 +120,89 @@ if "{full}" in desc:
     else:
         problems.append("the description links {full}: upload the full MV first")
 
+
+# ---------------------------------------------------------------- links block (workflow switch youtube.links)
+def simplified(words):
+    try:
+        from opencc import OpenCC
+    except ImportError:
+        return []
+    cc = OpenCC("t2s")
+    return [cc.convert(w) for w in words]
+
+
+def related(cid=None):
+    """(label, id) of up to 3 of the series' other uploads in the same group (episodes sNeM_*, or compilations
+    sN_<same name>): the ones after this one first, then the ones before it, nearest first."""
+    here, up = os.path.basename(os.path.normpath(D)), os.path.dirname(os.path.normpath(D))
+    rx = lambda n: re.match(r"s(\d+)(?:e(\d+))?_?(.*)$", n, re.I)
+    me = rx(here)
+    if not me:
+        return []
+    group = lambda m: "episode" if m[2] else m[3]
+    rows = []
+    for n in os.listdir(up):
+        m, p = rx(n), os.path.join(up, n, "youtube.json")
+        if n == here or not m or group(m) != group(me) or not os.path.exists(p):
+            continue
+        s = json.load(open(p, encoding="utf-8"))
+        if not s.get("full") or (cid and s.get("channel") not in (None, cid)):
+            continue
+        label = f"《{m[3].split('_')[0]}》" if m[2] else s["full"].get("title", n)[:40]
+        rows.append(((int(m[1]), int(m[2] or 0)), label, s["full"]["id"]))
+    at = (int(me[1]), int(me[2] or 0))
+    rows = sorted(r for r in rows if r[0] > at) + sorted((r for r in rows if r[0] < at), reverse=True)
+    out, seen = [], set()
+    for _, label, v in rows:
+        if v not in seen:
+            seen.add(v)
+            out.append((label, v))
+    return out[:3]
+
+
+def links_block(cid=None, pid=None):
+    out = []
+    if KIND == "full":
+        rel = [(l, v) for l, v in related(cid) if v not in desc]
+        if rel:
+            out += ["▶ 下一首／更多 MV"] + [f"{l} https://youtu.be/{v}" for l, v in rel]
+    elif state.get("full") and state["full"]["id"] not in desc:
+        out += [f"▶ 完整版 MV https://youtu.be/{state['full']['id']}"]
+    if pid and pid not in desc:
+        out += [f"▶ 播放清單 https://www.youtube.com/playlist?list={pid}"]
+    if search:
+        out += ["🔎 " + " ".join(search)]
+    return "\n".join(out)
+
+
+def with_links(block):
+    """The description with the block, dropping the block's last lines while it would pass 5,000 bytes."""
+    lines = block.splitlines()
+    while lines and len((desc + "\n\n" + "\n".join(lines)).encode("utf-8")) > 5000:
+        print("  !! description too long, left out:", lines.pop())
+    return desc + "\n\n" + "\n".join(lines) if lines else desc
+
+
+LINKS = workflow("youtube.links", D) and not done
+search = []
+if LINKS:
+    words = re.findall(r"《(.+?)》", title) + [w for w in re.split(r"[,，、\s]+", "\n".join(
+        b for _, b in pick("搜尋字", "Keywords"))) if w]
+    words += simplified(words)
+    for w in words:
+        if w not in search and w not in desc:
+            search.append(w)
+    for w in search:   # the new words go into the tags too, while they fit
+        cost = len(w) + (2 if " " in w else 0) + 1
+        if w not in tags and tag_cost + cost <= 500:
+            tags.append(w)
+            tag_cost += cost
+    try:
+        import opencc  # noqa: F401
+    except ImportError:
+        print("  (youtube.links: opencc is not installed, so no simplified forms are added: pip install "
+              "opencc-python-reimplemented, or list them under 搜尋字)")
+
 # ---------------------------------------------------------------- files
 E = proj.EDITS[KIND]
 base = os.path.join(D, "out", proj.NAME + E.get("suffix", ""))
@@ -170,6 +261,12 @@ print(f"  thumbnail   {os.path.relpath(thumb, D) if thumb else '-'}"
 print(f"  captions    {os.path.relpath(srt, D) if captions else '-'} ({LANG})")
 print(f"  status      {privacy}{' until ' + A.publish_at if A.publish_at else ''}, not made for kids, altered/synthetic content: yes, category {A.category}")
 print(f"  playlist    {A.playlist or '-'}")
+if LINKS:
+    pre = links_block(pid=A.playlist if re.fullmatch(r"(PL|OL)[\w-]{10,}", A.playlist or "") else None)
+    print("  links       " + (pre.replace("\n", "\n              ") or "-")
+          + ("\n              (+ the playlist link, once logged in)" if A.playlist and A.playlist not in pre else ""))
+elif done and done.get("links"):
+    print("  links       kept from the upload (youtube.json)")
 print(f"  quota       ~{50 * A.update + 50 * bool(thumb) + 400 * (captions and not A.update) + 51 * bool(A.playlist and not done)}"
       f" of 10,000 units/day{'' if A.update else ' + 1 of 100 uploads/day'}")
 if state.get("channel") and not done:
@@ -189,12 +286,13 @@ def media(path, mimetype, resumable=False):
     return MediaFileUpload(path, mimetype=mimetype, chunksize=16 * 1024 * 1024 if resumable else -1, resumable=resumable)
 
 
-def save(vid, updated=False):
+def save(vid, updated=False, links=""):
     """The upload record; an --update keeps the first upload time and notes when it was updated."""
     now = datetime.now().isoformat(timespec="seconds")
     state["channel"] = cid
     first = (state.get(KIND) or {}).get("at") if updated else None
-    state[KIND] = dict(id=vid, title=title, at=first or now, **({"updated": now} if updated else {}))
+    state[KIND] = dict(id=vid, title=title, at=first or now, **({"updated": now} if updated else {}),
+                       **({"links": links} if links else {}))
     json.dump(state, open(state_p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 
@@ -217,12 +315,24 @@ if not done and not A.allow_duplicate:   # also catches copies uploaded by hand 
 if not done and not A.over_limit and quota(cid, D) == 0:
     sys.exit(f"  !! the channel has put out {out_today(cid)} videos today, the cap (youtube.daily_max, Shorts included) "
              "so it is not throttled: upload tomorrow, or pass --over-limit")
+pid, page = None, None
+if A.playlist and not done:   # before the upload: the description links it
+    pid = A.playlist if re.fullmatch(r"(PL|OL)[\w-]{10,}", A.playlist) else None
+    while not pid:
+        r = yt.playlists().list(part="snippet", mine=True, maxResults=50, pageToken=page).execute()
+        pid = next((p["id"] for p in r["items"] if p["snippet"]["title"] == A.playlist), None)
+        page = r.get("nextPageToken")
+        if not pid and not page:
+            sys.exit(f"  !! no playlist titled {A.playlist!r} (create it in YouTube Studio first); nothing uploaded")
+links = links_block(cid, pid) if LINKS else (done or {}).get("links", "")
+if links:
+    snippet["description"] = with_links(links)
 if done:
     vid = done["id"]
     cur = yt.videos().list(part="status", id=vid).execute()["items"][0]["status"]
     keep = {k: cur[k] for k in ("privacyStatus", "publishAt") if k in cur and not (A.privacy or A.publish_at)}
     yt.videos().update(part="snippet,status", body=dict(id=vid, snippet=snippet, status={**status, **keep})).execute()
-    save(vid, updated=True)
+    save(vid, updated=True, links=links)
     record(vid, "update", title, D, KIND)
     print("  updated", vid)
 else:
@@ -245,9 +355,11 @@ else:
             tries += 1
             time.sleep(2 ** tries)
     vid = resp["id"]
-    save(vid)
+    save(vid, links=links)
     record(vid, "upload", title, D, KIND)
     print("  uploaded", vid)
+    if links:
+        record(vid, "link", links.replace("\n", " | ")[:200], D, KIND)
     if captions:
         yt.captions().insert(part="snippet", body=dict(snippet=dict(videoId=vid, language=LANG, name="", isDraft=False)),
                              media_body=media(srt, "application/octet-stream")).execute()
@@ -260,21 +372,18 @@ if thumb:
         print("  thumbnail", os.path.basename(thumb))
     except HttpError as e:   # e.g. the channel is not verified for custom thumbnails, or a Shorts cut
         print("  !! thumbnail not set:", getattr(e, "reason", e), "-> upload it in YouTube Studio")
-if A.playlist and not done:
-    pid = A.playlist if re.fullmatch(r"(PL|OL)[\w-]{10,}", A.playlist) else None
-    page = None
-    while not pid:
-        r = yt.playlists().list(part="snippet", mine=True, maxResults=50, pageToken=page).execute()
-        pid = next((p["id"] for p in r["items"] if p["snippet"]["title"] == A.playlist), None)
-        page = r.get("nextPageToken")
-        if not pid and not page:
-            sys.exit(f"  !! no playlist titled {A.playlist!r} (create it in YouTube Studio); the video itself is uploaded")
+if pid and not done:
     yt.playlistItems().insert(part="snippet", body=dict(snippet=dict(
         playlistId=pid, resourceId=dict(kind="youtube#video", videoId=vid)))).execute()
     # read it back: once a Short reported as added showed up in a different playlist of the channel
     if wait_until(lambda: in_playlist(yt, pid, vid), f"video {vid} in playlist {pid}"):
         record(vid, "playlist", pid, D, KIND)
         print("  playlist", pid)
-print(f"https://studio.youtube.com/video/{vid}/edit  -> still by hand: end screen, cards, pinned comment"
-      + (f", the Shorts thumbnail ({os.path.basename(studio_thumb) or 'thumbnails/shorts_*.jpg'})" if A.shorts else ", thumbnail Test & compare")
-      + f"; log each: python dreamfab/youtube_log.py add {vid} end_screen|card|pin TEXT")
+full_id = (state.get("full") or {}).get("id")
+print(f"https://studio.youtube.com/video/{vid}/edit  -> still by hand: "
+      + (f"the Shorts thumbnail ({os.path.basename(studio_thumb) or 'thumbnails/shorts_*.jpg'}), Related video = "
+         f"{'https://youtu.be/' + full_id if full_id else 'the full MV'} (the API cannot set it), pinned comment"
+         if A.shorts else
+         "end screen (next MV + the playlist + subscribe; the API cannot set it), a card to the next MV, pinned comment, "
+         "thumbnail Test & compare")
+      + f"; log each: python dreamfab/youtube_log.py add {vid} end_screen|related|card|pin TEXT")

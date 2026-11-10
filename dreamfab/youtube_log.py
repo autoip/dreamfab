@@ -14,7 +14,7 @@ uploads or publishes on one day, Shorts included, so it is not throttled. The up
 --over-limit goes past it); stats shows today's count and what is in stock.
 
 usage: python dreamfab/youtube_log.py add VIDEO ACTION [TEXT] [--project DIR] [--kind full|shorts|EP1...]
-           ACTION: upload update captions thumbnail playlist publish comment pin end_screen card link (or any word)
+           ACTION: upload update captions thumbnail playlist publish comment pin end_screen related card link (or any word)
        python dreamfab/youtube_log.py show [VIDEO ...]          the log, newest first (all videos, or these)
        python dreamfab/youtube_log.py import ROOT [ROOT ...]    record the uploads already in youtube.json files
                                                               (each once; safe to run again)
@@ -30,7 +30,7 @@ from dreamfab import db as shared
 from dreamfab.workflow import get as workflow
 
 LABELS = {"upload": "上傳", "update": "更新標題與說明欄", "captions": "字幕", "thumbnail": "封面", "playlist": "加入播放清單",
-          "publish": "公開", "comment": "留言", "pin": "置頂留言", "end_screen": "片尾", "card": "資訊卡", "link": "說明欄連結"}
+          "publish": "公開", "comment": "留言", "pin": "置頂留言", "end_screen": "片尾", "related": "Shorts 相關影片", "card": "資訊卡", "link": "說明欄連結"}
 
 
 def connect(path=None):

@@ -44,6 +44,10 @@ SWITCHES = [
      "每個頻道一天最多上傳或公開幾支（Shorts 也算），避免被限流；建議不要超過 6；0 不限制。上傳程式到了就停，--over-limit 硬上",
      "videos a channel uploads or publishes in one day, Shorts included, so it is not throttled (6 or fewer is wise; 0: "
      "no cap); the uploaders stop there, --over-limit goes past it"),
+    ("youtube.links", False, None,
+     "MV 和合集新上傳時，說明欄最後自動加：下一首／相關 MV 連結、播放清單連結、搜尋字（繁體＋簡體）；已上傳的不動",
+     "new MV and compilation uploads end their description with links to the next/related MVs and the playlist, and "
+     "search words in traditional and simplified Chinese; videos already uploaded are left alone"),
     ("youtube.log", True, None,
      "上架紀錄：上傳程式把每個動作記進共用資料庫的 youtube_log 表（資源庫的出貨紀錄讀它）",
      "the publishing log: the uploaders record every step in the shared database's youtube_log (the library reads it)"),

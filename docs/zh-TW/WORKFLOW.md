@@ -27,6 +27,7 @@
 | `video.enhance` | `off` | 短劇和 MV：成片用 GPU 超分補幀的 `clips_hd/`（要先跑各線的 `enhance.py`，見 [GPU_ENHANCE.md](GPU_ENHANCE.md)） |
 | `youtube.privacy` | `private` | 上傳後的狀態：`private` 私人（在 Studio 看過再公開）、`unlisted` 不公開、`public` 公開。排程發布一定先私人 |
 | `youtube.daily_max` | `6` | 一個頻道一天最多上傳或公開幾支（Shorts 也算），避免被限流；建議不要超過 6，`0` 不限制。上傳程式到了上限就停（`--over-limit` 硬上），資源庫首頁的「庫存與出貨」顯示今天還能出幾支 |
+| `youtube.links` | `off` | MV、合集、Shorts **新上傳**時，說明欄最後自動加下一首／相關 MV、播放清單連結和搜尋字（繁體＋簡體），見 [mv/PUBLISHING.md](mv/PUBLISHING.md)。已上傳的影片不會被改 |
 | `youtube.log` | `on` | 上傳程式把每個動作記進上架紀錄（共用資料庫 `dreamfab.db` 的 `youtube_log` 表；資源庫的「出貨紀錄」讀它）。手動的 `youtube_log.py add` 不受影響 |
 
 值可以寫 `on`／`off`（也接受 `true`／`false`、`yes`／`no`、`1`／`0`、`開`／`關`）、數字，或列出的選項。

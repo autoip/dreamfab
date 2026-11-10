@@ -95,7 +95,9 @@ tk.grain(im).save(os.path.join(out, "shorts_A_duet.jpg"), quality=95)
 - [ ] 縮圖 A/B/C 測試。
 - [ ] Shorts 上傳直式版（WORKFLOW.md「直式版」）：橫式影片不會被歸到 Shorts。
 - [ ] Shorts 縮圖：在電腦版 YouTube Studio 上傳 9:16 的 `thumbnails/shorts_*.jpg`，三張挑一張（見上方「Shorts 縮圖」）。
-- [ ] 片尾畫面：訂閱 + 播放清單（片尾推廣卡的秒數就是預留給這個用的）。
+- [ ] **片尾畫面（必做，API 設不了）**：上傳完馬上在 Studio（用 Chrome）加：下一首 MV（還沒有下一首就放最新上傳）＋本季播放清單＋訂閱。片尾推廣卡的秒數就是預留給這個用的。合集也要做。做完記 `youtube_log.py add 影片ID end_screen 文字`。
+- [ ] **Shorts 相關影片（必做，API 設不了）**：在 Studio 的 Shorts 編輯頁「相關影片」選對應的完整版 MV。做完記 `youtube_log.py add 影片ID related 完整版ID`。
+- [ ] 說明欄連結與搜尋字：開關 `youtube.links` 打開時上傳程式自動加（見下一節）；沒開就自己寫進說明欄。
 - [ ] 標題、縮圖、標籤沒有真實人物或政黨名稱。
 
 用 `mv/youtube_upload.py` 上傳時，字幕、「經過修改或合成的內容」、觀眾、完整版的縮圖會自動設好，見下一節。
@@ -135,6 +137,15 @@ python mv/youtube_upload.py PROJECT_DIR --update                  # 改了 SEO �
 | 說明欄＋API | API 用的說明欄；沒有就用「說明欄」 |
 | Shorts＋說明欄 | Shorts 的說明欄；裡面的 `{full}` 會換成完整版的連結 |
 | 標籤 | 逗號分隔 |
+| 搜尋字 | 選填：觀眾會搜、標題卻沒有的字：詩名、別名、名句、常見錯字（例：歌名《月下》，寫 `靜夜思, 床前明月光`）。逗號分隔 |
+
+**說明欄自動連結（開關 `youtube.links`，預設關）**
+打開後，**新上傳**的 MV、合集、Shorts 說明欄最後會多一段（已上傳的影片不會被改）：
+- `▶ 下一首／更多 MV`：同一個系列資料夾裡、已上傳的其他集（`sNeM_*` 的 `youtube.json`），先列後面的集、再列前面最近的，最多 3 支；合集（`sN_合集`）連其他季的合集。說明欄已經有的連結不重複。
+- `▶ 播放清單`：`--playlist` 指定的清單連結（上傳前就先找到清單 ID，找不到就不上傳）。
+- `🔎` 搜尋字：標題裡《》的名字＋`搜尋字` 區段，說明欄沒出現的才列；裝了 `opencc`（`pip install opencc-python-reimplemented`）會自動加簡體（洛神賦→洛神赋、靜夜思→静夜思），沒裝就把簡體自己寫進 `搜尋字`。新字放得下也會加進標籤。
+- Shorts 不列其他集，改放完整版連結（說明欄裡已經有 `{full}` 就不加）。
+- 這段存在 `youtube.json`，之後 `--update` 會保留；超過 5,000 bytes 時從最後一行開始捨棄。
 
 **API 的限制**（送出前腳本會先檢查）
 - 標題 ≤ 100 字，不能有 `<` `>`。
@@ -144,7 +155,8 @@ python mv/youtube_upload.py PROJECT_DIR --update                  # 改了 SEO �
 - 配額：每天 10,000 單位，另外每天最多上傳 100 支。一支影片連縮圖、字幕、播放清單約 500 單位（字幕就占 400）。API 本身不收費。
 
 **API 做不到，還是要在 Studio 手動做的**
-- 片尾畫面、資訊卡、置頂留言、縮圖「測試與比較」。
+- 片尾畫面（**每支新 MV、合集都要做**：下一首 MV＋播放清單＋訂閱）、資訊卡、置頂留言、縮圖「測試與比較」。
+- Shorts 的「相關影片」（連到完整版 MV）：Data API 沒有這個欄位，上傳程式最後會印出要選哪一支。
 - Shorts 的自訂縮圖：API 設的縮圖會被存成 16:9（9:16 的圖放中間、左右補模糊），Shorts 架不採用。所以腳本預設不設 Shorts 縮圖，只提醒你到電腦版 Studio 上傳 `thumbnails/shorts_<字母>_*.jpg`（見上方「Shorts 縮圖」）。
 
 ## 播放清單整理（YouTube Data API）
