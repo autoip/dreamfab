@@ -14,6 +14,7 @@ rising ash. Everything song-specific comes from the project's TYPO dict (see exa
   readings  {word: "romanization"}       small gold reading under rhyme words at the end of a line
   hold      {line text: seconds}         clear that line this long after its last word (a shout before a long silence)
   gags      [{"type": ..., "match": word or [words], ...}]  keyword effects, see GAGS below
+  style     "ktv"                       fixed KTV subtitles instead (see ktv(): two rows at the bottom, colour wipe)
 
 build(sections, words, cut, a, b, beats, theme, plates=()) -> list of ASS lines; times are body time (song - cut).
 """
@@ -73,11 +74,16 @@ def tokenize(text):
 norm = lambda s: re.sub(r"[^\w]", "", s.lower())
 
 
-def time_tokens(lines, words):
+def time_tokens(lines, words, end=None):
     """Per-token start times: align lyric characters to ASR word characters, interpolate the gaps.
-    lines: [(line start, text)], words: [[start, end, word]] -> [(t_first, t_next_line, [(token, t)])]"""
+    lines: [(line start, text)], words: [[start, end, word]] -> [(t_first, t_next_line, [(token, t)])]
+    Only the words around these lines take part: a chorus sung three times would otherwise match an earlier pass.
+    end: the section's end, so a last line held long (a final note) is timed to the end, not 3.2 s after it starts."""
     asr = []
+    lo, hi = (lines[0][0] - 1.5, max(lines[-1][0] + 12.0, end or 0)) if lines else (0, 0)
     for s, e, w in words:
+        if not lo <= s <= hi:
+            continue
         cs = norm(w)
         for i, c in enumerate(cs):
             asr.append((c, s + (e - s) * i / max(1, len(cs))))
@@ -93,7 +99,7 @@ def time_tokens(lines, words):
             t_of[blk.a + k] = asr[blk.b + k][1]
     out = []
     for li, (t0, _) in enumerate(lines):
-        t1 = lines[li + 1][0] if li + 1 < len(lines) else t0 + 3.2
+        t1 = lines[li + 1][0] if li + 1 < len(lines) else (end if end and end > t0 + 3.2 else t0 + 3.2)
         idx = [k for k, (_, l, _) in enumerate(lyr) if l == li]
         pts = [(k, t_of[k]) for k in idx if t_of[k] is not None and t0 - 0.3 <= t_of[k] <= t1 - 0.1]
         pts = [p for i, p in enumerate(pts) if i == 0 or p[1] >= pts[i - 1][1]]
@@ -407,7 +413,94 @@ def gags_of(theme, kind, text):
     return [g for g in theme.get("gags", []) if g["type"] == kind and hits(g, text)]
 
 
+def ktv_title(ev, T, t0, t1, th):
+    """KTV title card: the song title in the middle of the frame (white with a glow in the sung colour), title_en and
+    tagline under it; fades in and out."""
+    sung, cx, cy = th.get("sung", "4DD2FF"), W // 2, H // 2 - 60
+    fad = "\\fad(800,700)"
+    for layer, tags in ((6, f"\\bord16\\blur12\\3c{col(sung)}\\1a&HFF&\\shad0"),
+                        (7, f"\\bord6\\blur0.6\\3c&H101010&\\c{col(WHITE)}\\shad3\\4c&H000000&")):
+        ev.add(T(t0), T(t1), f"\\an5\\pos({cx},{cy})\\fn{FONT}\\fs{FS(150)}\\b1{tags}{fad}", th["title"], layer)
+    if th.get("title_en"):
+        ev.add(T(t0 + 0.6), T(t1), f"\\an5\\pos({cx},{cy + 135})\\fn{FONT}\\fs{FS(50)}\\fsp14\\bord3\\3c&H101010&"
+                                    f"\\c{col(sung)}\\shad0{fad}", th["title_en"], 7)
+    if th.get("tagline"):
+        ev.add(T(t0 + 1.2), T(t1), f"\\an5\\pos({cx},{cy + 215})\\fn{FONT}\\fs{FS(30)}\\fsp10\\bord2\\3c&H101010&"
+                                    f"\\c{col(WHITE)}\\alpha&H30&\\shad0{fad}", th["tagline"].upper(), 7)
+
+
+def ktv(sections, words, cut, a, b, theme, beats=()):
+    """KTV subtitles (TYPO style="ktv"): two fixed rows at the bottom; lines take turns, the upper row set from the
+    left and the lower row from the right, as in a karaoke box. A line shows up a moment before it is sung and each
+    character fills with the sung colour while it is sung (\\kf). TYPO keys: size (76), sung ("4DD2FF"), unsung
+    (white), voice_sung ({voice: colour}), rows_y (two y positions of the baseline), margin (220 px), lead (1.0 s on screen
+    before the first character), ktv_title ((t0, t1) song seconds of the title card, see ktv_title()), countdown
+    (seconds: a line after at least this long without singing gets four dots above its first character that go out one
+    per beat, the last one as the singing starts)."""
+    T = lambda t: t - cut
+    size0, margin, lead = theme.get("size", 76), theme.get("margin", 220), theme.get("lead", 1.0)
+    sung, unsung = theme.get("sung", "4DD2FF"), theme.get("unsung", WHITE)
+    rows_y = theme.get("rows_y", (H - 175, H - 80))
+    voice_sung = theme.get("voice_sung", {})   # e.g. {"C": "F2C55C"}: the crowd's lines fill in gold
+    lines, gaps, voices = [], [], []
+    for s in sections:
+        if s["span"][0] is None or not s.get("lines"):
+            continue
+        vs = s.get("voices") or [None] * len(s["lines"])
+        for (t, text, *_), v, x in zip(s["lines"], vs, time_tokens([tuple(x[:2]) for x in s["lines"]], words, s["span"][1])):
+            if a <= x[0] < b:   # keep the lyric's phrase breaks: a gap after the last token before each space
+                ends, n = set(), 0
+                for chunk in text.split()[:-1]:
+                    n += len(tokenize(chunk)); ends.add(n - 1)
+                lines.append(x); gaps.append(ends); voices.append(v)
+    order = sorted(range(len(lines)), key=lambda i: lines[i][0])
+    lines, gaps, voices = [lines[i] for i in order], [gaps[i] for i in order], [voices[i] for i in order]
+    done = [min(t1 - 0.05, toks[-1][1] + 0.6) for t0, t1, toks in lines]   # the last character's fill ends here
+    hide = [max(done[i] + 0.1, min(done[i] + 0.6, lines[i + 2][0] - 0.4)) if i + 2 < len(lines) else done[i] + 0.8
+            for i in range(len(lines))]
+    ev = Ev()
+    if theme.get("ktv_title"):
+        t0, t1 = theme["ktv_title"]
+        if t1 > a and t0 < b:
+            ktv_title(ev, T, max(t0, a), min(t1, b), theme)
+    for i, (t0, t1, toks) in enumerate(lines):
+        show = max(a, t0 - lead, hide[i - 2] + 0.05 if i >= 2 else a)
+        text = "".join(k for k, _ in toks)
+        size = size0
+        while size > 40 and text_w(text, size) + size * 0.5 * len(gaps[i]) > W - 2 * margin:   # a long line shrinks
+            size -= 4
+        bs = [x for x in beats if x <= toks[0][1] + 0.12][-4:]
+        if theme.get("countdown") and len(bs) == 4 and toks[0][1] - (done[i - 1] if i else a) >= theme["countdown"]:
+            beat = (bs[3] - bs[0]) / 3
+            d0 = max(a, bs[0] - 2 * beat, hide[i - 2] + 0.05 if i >= 2 else a)
+            show = min(show, d0)
+            r, y = 13, rows_y[i % 2] - FS(size) - 18
+            x0 = margin if i % 2 == 0 else W - margin - text_w(text, size) - size * 0.5 * len(gaps[i])
+            for j in range(4):   # the leftmost dot goes out first, the last one on the first sung character
+                shape(ev, T(d0), T(bs[j]), x0 + j * 40, y, circle(r), sung, layer=6,
+                      extra=f"\\bord3\\3c&H101010&\\fad(150,0)")
+        steps = [f"{{\\k{max(0, round((toks[0][1] - show) * 100))}}}"]
+        for k, (tok, t) in enumerate(toks):
+            nxt = toks[k + 1][1] if k + 1 < len(toks) else done[i]
+            steps.append(f"{{\\kf{max(1, round((nxt - t) * 100))}}}{tok}" + ("\\h\\h" if k in gaps[i] else ""))
+        upper = i % 2 == 0
+        pos = f"\\an1\\pos({margin},{rows_y[0]})" if upper else f"\\an3\\pos({W - margin},{rows_y[1]})"
+        ev.add(T(show), T(hide[i]), f"{pos}\\fn{FONT}\\fs{FS(size)}\\b1\\bord5\\shad2\\3c&H101010&\\4c&H000000&"
+                                     f"\\1c{col(voice_sung.get(voices[i], sung))}\\2c{col(unsung)}\\fad(150,200)", "".join(steps), 5)
+    return head() + ev.rows
+
+
+def head():
+    return ["[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", "WrapStyle: 2", "ScaledBorderAndShadow: yes", "",
+            "[V4+ Styles]",
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+            f"Style: K,{FONT},96,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,5,0,5,0,0,0,1",
+            "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
+
+
 def build(sections, words, cut, a, b, beats, theme, seed=7, plates=()):
+    if theme.get("style") == "ktv":
+        return ktv(sections, words, cut, a, b, theme, beats)
     rnd = random.Random(seed)
     ev = Ev()
     T = lambda t: t - cut
@@ -445,7 +538,7 @@ def build(sections, words, cut, a, b, beats, theme, seed=7, plates=()):
             title_card(ev, T, beats, max(s0, a) + 0.6, s1c, rnd, theme)
         if not s.get("lines"):
             continue
-        timed = time_tokens([tuple(x) for x in s["lines"]], words)
+        timed = time_tokens([tuple(x) for x in s["lines"]], words, s1)
         voices = s["voices"]
         prev_zone, prev_vside = None, None
         for li, (t0, t1, toks) in enumerate(timed):
@@ -561,9 +654,4 @@ def build(sections, words, cut, a, b, beats, theme, seed=7, plates=()):
                 x = rnd.uniform(0, W); r = rnd.choice([3, 4, 6])
                 shape(ev, T(bt), T(bt + 1.6), x, H, circle(r), rnd.choice([EMBER, FIRE, "FFD27A"]), "30", 1,
                       f"\\blur2\\move({x:.0f},{rnd.uniform(H * .6, H):.0f},{x + rnd.uniform(-120, 120):.0f},{rnd.uniform(100, 500):.0f})\\fad(200,600)")
-    head = ["[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", "WrapStyle: 2", "ScaledBorderAndShadow: yes", "",
-            "[V4+ Styles]",
-            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-            f"Style: K,{FONT},96,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,5,0,5,0,0,0,1",
-            "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
-    return head + ev.rows
+    return head() + ev.rows

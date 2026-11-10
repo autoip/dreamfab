@@ -93,6 +93,7 @@ EDITS = {"short": dict(cut=57.4, end=118.3, open_s=0, end_s=3, suffix="_1min", s
 | `size` | 畫布尺寸，預設 `(1920, 1080)`；`(1080, 1920)` 為直式（見 WORKFLOW「直式版」） |
 | `focus` | `{素材 id: 0–1}`，裁成直式時的水平裁切中心，預設 0.5；用 `qc/focus.py` 產生。鍵寫成 `"素材 id@列時間"`（例如 `"LS06@133.2"`）只設定那一鏡，給在片段裡左右移動的主體用。數值是裁切窗可移動範圍的比例，不是畫面座標：16:9 素材裁成 9:16 時，畫面中心 ≈ 0.16 + 0.68 × focus（主體在畫面 x 0.75 要設 0.87） |
 | `zones` | 取代字幕引擎的橫排歌詞落點 `{"TL": (x, y), ...}`，直式畫面用 |
+| `typo` | 只對這組剪輯改 `TYPO` 的欄位，例如方形畫面的 KTV 字幕 `typo=dict(size=66, margin=50, rows_y=(930, 1018))` |
 | `open_card` / `end_card` | 只對這組剪輯換推廣卡圖（例如直式卡），覆蓋 `RENDER` 的設定 |
 | `crop` | 只對這組剪輯要裁的素材 `{素材 id: "crop=w:h:x:y"}`，疊在 `RENDER["crop"]` 上 |
 | `labels` | `False` 時不畫 `FEATURE` 的功能標籤；預設只要 `project.FEATURE` 有設就畫 |
@@ -112,6 +113,7 @@ EDITS = {"short": dict(cut=57.4, end=118.3, open_s=0, end_s=3, suffix="_1min", s
 | `crop` | `{}` | `{clip_id: "crop=w:h:x:y"}`，裁掉燒進字幕的區域。對嘴的字幕建議改用 AutoIP `/videos/restore`（`operations[]=subtitle`）去掉，不掉畫質 |
 | `grade` | 對比 1.07、飽和 1.06、暗角、動態顆粒 | ffmpeg 調色濾鏡鏈 |
 | `open_card` / `end_card` | — | 推廣卡圖片（1920×1080） |
+| `watermark` | — | 全片右上角的淡色浮水印文字，例如 `"AutoIP.ai"`（白色、45% 不透明）；不寫就沒有 |
 | `lang` | `zh-TW` | SRT 檔名語言 |
 | `tail_guard` | 0.35 | 對嘴片尾不使用的秒數 |
 

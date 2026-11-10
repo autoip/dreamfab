@@ -7,12 +7,14 @@ env:   REUSE_BODY=1   keep render_<MODE>/body_raw.mp4 (subtitle / card changes o
        SUBST="B17:B05" temporary stand-ins for clips that are not ready yet
 edit:  size=(1080, 1920) renders a portrait cut: focus={src: 0..1} picks the horizontal crop centre per clip
        ("src@row_time": 0..1 for one shot, when the subject moves across the clip),
-       zones={...} replaces epic.ZONES, open_card / end_card override RENDER's cards,
+       zones={...} replaces epic.ZONES, typo={...} overrides TYPO keys (e.g. KTV size / margin / rows_y for a square cut),
+       open_card / end_card override RENDER's cards,
        crop={src: filter} is merged over RENDER's crop (e.g. a crop only the landscape cut needs)
        render=dict(fps=60, enhance=True) overrides RENDER for this edit, e.g. a 60 fps cut to compare
 enhance=True (RENDER or an edit's render=): each clip's clips_hd/ copy from enhance.py (2x super resolution + frame
        generation) when there is one newer than the clip; crop= / delogo= pixel values in crop filters are scaled to it
        labels=False drops the project.FEATURE corner tags ("AutoIP｜<feature>" when the clip's feature changes)
+watermark="AutoIP.ai" (RENDER or an edit's render=): a faint name in the top right corner for the whole body (default none)
 out:   PROJECT_DIR/out/<NAME><suffix>.mp4 and .<lang>.srt
 
 The EDL is resolved from project.EDITS here, at render time: there is no intermediate edl.json that could belong
@@ -28,7 +30,7 @@ proj = load_project(sys.argv[1])
 MODE = sys.argv[2]
 D = proj.DIR
 R = dict(fps=25, crop={}, grade="eq=contrast=1.07:saturation=1.06,vignette=PI/5,noise=alls=4:allf=t", lang="zh-TW",
-         open_card="", end_card="", tail_guard=0.35, enhance=workflow("video.enhance", D))
+         open_card="", end_card="", watermark="", tail_guard=0.35, enhance=workflow("video.enhance", D))
 R.update(getattr(proj, "RENDER", {}))
 E = edit(proj, MODE)
 R.update({k: E[k] for k in ("open_card", "end_card") if k in E})
@@ -151,7 +153,7 @@ if seglist:
     run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", body])
 
 # ---------- kinetic subtitles
-TH = proj.TYPO
+TH = {**proj.TYPO, **E.get("typo", {})}
 epic.configure(TH, D)
 epic.W, epic.H = W, H
 if "zones" in E:
@@ -186,29 +188,38 @@ for s in sections:
             srt.append(f"{k}\n{f(t - CUT + OPEN_S)} --> {f(min(t1, END) - CUT + OPEN_S)}\n{x}\n"); k += 1
 open(os.path.join(OUT, f"{NAME}.{R['lang']}.srt"), "w", encoding="utf-8-sig").write("\n".join(srt))
 
-# ---------- feature tags: project.FEATURE {clip id prefix: "feature name"}; when the cut lands on a clip made with another
-# feature than the previous shot, an "AutoIP｜<feature>" tag (AutoIP in orange) fades in at the top right for ~2 s (edit labels=False: none)
-labp = ""
+# ---------- corner marks
+# feature tags: project.FEATURE {clip id prefix: "feature name"}; when the cut lands on a clip made with another feature
+# than the previous shot, an "AutoIP｜<feature>" tag (AutoIP in orange) fades in at the top right for ~2 s (edit labels=False: none)
+# watermark: R["watermark"] in white at 45 % opacity in the top right corner from the first frame to the last
+labp, ev = "", []
+ts = lambda v: f"{int(v // 3600)}:{int(v % 3600 // 60):02d}:{v % 60:05.2f}"
 FEAT = getattr(proj, "FEATURE", {})
 if FEAT and E.get("labels", True):
     feat = lambda src: next((v for k, v in sorted(FEAT.items(), key=lambda kv: -len(kv[0])) if src.startswith(k)), None)
-    fs = round(46 * W / 1920) if W > H else round(52 * W / 1080)   # phones: 34 px was readable only on a big screen
-    ev, prev = [], None
+    prev = None
     for i, s in enumerate(shots):
         f_ = feat(SUBST.get(s[1], s[1]))
         if f_ and f_ != prev:
             a_, b_ = starts[i] - CUT + 0.12, min(starts[i + 1] - CUT - 0.05, starts[i] - CUT + 2.3)
             if b_ - a_ > 0.6:
-                ts = lambda v: f"{int(v // 3600)}:{int(v % 3600 // 60):02d}:{v % 60:05.2f}"
                 ev.append(f"Dialogue: 0,{ts(a_)},{ts(b_)},Tag,,0,0,0,,{{\\fad(250,300)\\c&H5078FF&}}AutoIP{{\\c&HFFFFFF&}}｜{f_}")
         prev = f_
+if R["watermark"]:
+    ev.append(f"Dialogue: 1,{ts(0)},{ts(END - CUT)},Mark,,0,0,0,,{R['watermark']}")
+if ev:
+    fs = round(46 * W / 1920) if W > H else round(52 * W / 1080)   # phones: 34 px was readable only on a big screen
+    ms = round(fs * 0.7)
+    mx, my = round(40 * W / 1920), round(36 * H / 1080)
     labp = os.path.join(WORK, "labels.ass")
     open(labp, "w", encoding="utf-8-sig").write("\n".join([
         "[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", "ScaledBorderAndShadow: yes", "",
         "[V4+ Styles]", "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
         "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
         f"Style: Tag,{proj.TYPO['font']},{fs},&H00FFFFFF,&H000000FF,&H60000000,&H60000000,0,0,0,0,100,100,1,0,3,{max(6, fs // 4)},0,9,"
-        f"{round(40 * W / 1920)},{round(40 * W / 1920)},{round(36 * H / 1080)},1", "",
+        f"{mx},{mx},{my},1",
+        f"Style: Mark,{proj.TYPO['font']},{ms},&H8CFFFFFF,&H000000FF,&HC0000000,&HC0000000,0,0,0,0,100,100,2,0,1,{max(1, ms // 18)},0,9,"
+        f"{mx},{mx},{my},1", "",
         "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text", *ev]) + "\n")
 
 

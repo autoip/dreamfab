@@ -93,6 +93,7 @@ EDITS = {"short": dict(cut=57.4, end=118.3, open_s=0, end_s=3, suffix="_1min", s
 | `size` | Canvas size, default `(1920, 1080)`; `(1080, 1920)` renders in portrait (see WORKFLOW, "Vertical cut") |
 | `focus` | `{clip id: 0–1}`, the horizontal crop centre when cropping to portrait, default 0.5; generate it with `qc/focus.py`. A key `"clip id@row time"` (e.g. `"LS06@133.2"`) sets one shot only, for a subject that moves across the clip. The value is a fraction of the crop window's travel, not a frame position: for a 16:9 clip in a 9:16 crop the window centre ≈ 0.16 + 0.68 × focus (a subject at x 0.75 needs 0.87) |
 | `zones` | Replaces the subtitle engine's lyric-row positions `{"TL": (x, y), ...}`, for the portrait canvas |
+| `typo` | `TYPO` keys for this edit only, e.g. KTV subtitles on a square cut: `typo=dict(size=66, margin=50, rows_y=(930, 1018))` |
 | `open_card` / `end_card` | Card images for this edit only (e.g. portrait cards), overriding `RENDER` |
 | `crop` | Crops for this edit only, `{clip id: "crop=w:h:x:y"}`, merged over `RENDER["crop"]` |
 | `labels` | `False` drops the `FEATURE` corner tags; by default they are drawn whenever `project.FEATURE` is set |
@@ -112,6 +113,7 @@ How to write `shots`:
 | `crop` | `{}` | `{clip_id: "crop=w:h:x:y"}`, crops out burned-in captions. For lip-sync captions prefer AutoIP `/videos/restore` (`operations[]=subtitle`), which keeps the resolution |
 | `grade` | contrast 1.07, saturation 1.06, vignette, animated grain | ffmpeg color-grading filter chain |
 | `open_card` / `end_card` | — | Promo card images (1920×1080) |
+| `watermark` | — | Faint text in the top right corner for the whole video, e.g. `"AutoIP.ai"` (white, 45% opaque); none when left out |
 | `lang` | `zh-TW` | Language in the SRT file name |
 | `tail_guard` | 0.35 | Seconds at the end of each lip-sync clip that are never used |
 
