@@ -40,8 +40,14 @@ through `news/make.py`; read `ROOT/docs/en/news/OVERVIEW.md` before the first da
   releases and SEC 8-Ks, official data (ISM, BLS, the Fed). Chinese-language media only for local numbers (for Taiwan:
   the TAIEX futures night session, the index). When two sources disagree, check a quote page's historical close. Never
   invent a number, a reason or a quote.
-- **News, not advice.** No buy or sell calls, no price targets of your own. The end card always lists the sources and
-  says the anchor and voice are AI-generated and that it is not investment advice.
+- **News, not advice: the legal lines are checked twice per episode.** Read `ROOT/docs/en/news/COMPLIANCE.md` and run
+  its checklist once when the research is written (before the script is shown) and once more before the render; a
+  script that fails is rewritten, not published. In short: no buy, sell, price target, support or resistance, timing
+  or bullish/bearish verdict of our own (valuation only as a quote with its source); every number from two sources
+  and no rumour written as fact; allegations kept apart from verdicts, with the company's answer; nothing
+  undisclosed; nothing paid for by viewers. The end card and the description always list the sources and say the
+  anchor and voice are AI-generated, that the channel is not a securities investment consulting business, and that
+  the content is compiled news and public information, not investment advice.
 - **No logos, no real people's pictures.** Companies appear as names and numbers. The anchor is a made-up person
   (text-to-image portrait, her voice from an image-to-video line); never clone a real person's face or voice.
 
@@ -63,10 +69,14 @@ through `news/make.py`; read `ROOT/docs/en/news/OVERVIEW.md` before the first da
      real people or flags, the subject in the middle, the top third dark for the hook. `hero` → `submit hero` makes it
      (one v4 picture, 20 credits); without it the cover shows the anchor.
    - `SEO`: titles A/B/C that open on the same hook, a lead, tags.
-4. `cards`, `cover`, `seo` (no credits). Show the cards and the cover before spending anything.
+4. `cards`, `cover`, `seo` (no credits). Run the `COMPLIANCE.md` checklist on the script and the SEO copy. Show the
+   cards and the cover before spending anything.
 5. `voice` → `submit voice` → `check`. Listen to every spot `check` lists. English names are often written otherwise
    by the recogniser, so do not re-read on the transcript alone.
 6. `anchor` → `submit lipsync` (only her opening and her closing lines, the call to subscribe included) → `render`.
+   Before `render`, look at her chest in a few frames of `clips/anchor.mp4`: the lip-sync service sometimes burns in a
+   line of made-up captions and still reports success. Then `desub` → `submit desub` (video restore clears the line;
+   30 credits per 8 s) rather than another lip-sync, which mostly comes back with them too.
 7. A line read wrong: `redo DAY FIRST LAST` → `submit redo` → `splice DAY FIRST LAST`. The lip-sync is kept when her
    lines did not change. If only a word of the new take is wrong, mix old and new by hand at the pauses.
 8. `upload` when the show has a channel (then report the link).
@@ -92,7 +102,9 @@ A 16:9 report of 3-6 minutes on one story, on the same channel with the same anc
 
 1. Research from primary sources (SEC filings, company releases, earnings calls), checked against English media: two
    sources for every number, and nothing that sources disagree on. Write the script and its sources
-   (`文案_v1.md`) and show them before any credits are spent.
+   (`文案_v1.md`), run the `COMPLIANCE.md` checklist on it (bull and bear cases quoted with their sources, signals to
+   watch instead of a verdict, disputes as "who alleged what, how the company answered, where it stands"), and show
+   them before any credits are spent.
 2. Build it on the explainer line (`explain/`): `script.md` (numbers as words, `SAY` for misread words such as
    `("光纖", "光仙")`), `project.py` with `IMAGES` (v4, no text or logos), `SHOTS`, `FACTS` (source cards), `TITLE`, `MUSIC`.
 3. The anchor: cut only the opening and closing parts of the narration for lip-sync (31 s at most each, 0.6 s of
@@ -101,4 +113,8 @@ A 16:9 report of 3-6 minutes on one story, on the same channel with the same anc
 4. Data cards as HTML (16:9), a 16:9 cover (tag, date, hook, the anchor's face), SEO with chapter times.
 5. `news/make.py upload` with the show's `series.py` (`CHANNEL`, `YT_TOKEN`, `PRIVACY`, private suggested) and the
    episode's `day.py` (`FILE`).
+   A vertical trailer under 60 s goes with it (the Shorts feed brings the views): `SHORTS` in `project.py` (clips of
+   the narration as written; the anchor's parts from their first line; `layout="band"`; events and numbers only),
+   `explain/render.py EPISODE --shorts`, the SEO file's 「Shorts 標題」「Shorts 說明欄」, then `upload EPISODE --shorts`
+   and the related video set to the long report in Studio.
 6. Report the link, the length, the credits and the spots to listen to.

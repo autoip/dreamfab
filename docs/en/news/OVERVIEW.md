@@ -65,7 +65,7 @@ In the 11/03 pilot, English sources first turned up three stories no Chinese rep
 | Taiwan's own numbers | the night session of TAIEX futures (TAIFEX or MoneyDJ's after-hours close), the index, TSMC ADR: only these from Chinese-language media |
 
 - **Every number from two sources that agree.** When they don't, check a quote page's historical close. On 11/03 one English source had Intel at −5.19%; it closed −8.80%.
-- **No advice.** Report what happened; never tell anyone to buy or sell.
+- **No advice.** Report what happened; never tell anyone to buy or sell. The legal lines and the pre-publish checklist are in [COMPLIANCE.md](COMPLIANCE.md): once when the research is written, once more before the render.
 
 ### 2. The script
 - `python news/make.py new projects/<show> 2026-11-04` starts the day.
@@ -82,7 +82,7 @@ In the 11/03 pilot, English sources first turned up three stories no Chinese rep
 - **Cards**: build them in `day.py` from `row()` (an index or a price), `bar()` (a bar for a move) and `box()` (a point).
   - Red is up and green is down, as in Taiwan.
   - Companies appear as names and numbers only: no logos, no photos of real people.
-- **Credits at the end**: the sources must be listed, along with "anchor and voice are AI-generated" and "for information only, not investment advice".
+- **Credits at the end**: the sources must be listed, along with "anchor and voice are AI-generated | this channel is not a securities investment consulting business; its content is compiled news and public information, not investment advice" (the non-adviser notice since 11/06, see [COMPLIANCE.md](COMPLIANCE.md)).
 
 ### 3. Making it
 ```
@@ -102,6 +102,11 @@ python news/make.py render DAY
 - **Lip-sync gets only the anchor's two parts** (opening and close, about 8 s together): three times faster than the whole narration, same credits.
   - Lip-sync clips usually come back half a second short, so the audio sent gets 0.6 s of silence at the end.
   - Where the clip runs out, the full-screen sponsor card takes over.
+  - **Look at the anchor's chest before rendering**: the lip-sync service sometimes burns a line of made-up captions (English or Chinese that are no words) across her chest, above her hands, and still reports success. Another lip-sync job mostly comes back with them too, and "no text" in the prompt does not stop them. Clear them instead (AutoIP video restore, 30 credits per 8 s, half off-peak); the face, the mouth and the length stay as they are:
+    ```
+    python news/make.py desub  DAY                   # the clip with text becomes clips/anchor_ng.mp4; jobs/desub.json
+    python news/make.py submit DAY desub --off-peak  # the cleared clip goes back to clips/anchor.mp4; look, then render
+    ```
 - **A few lines read wrong**: read just those lines again and put them back into the narration.
   ```
   python news/make.py redo   DAY 4 9               # read lines 4-9 again (the first line is 1)
@@ -184,7 +189,7 @@ What it does:
   - An English name the recogniser writes another way does not count. A narration cut off at the end (before the throwaway line) gets its last line read again the same way.
 - **A missed start runs late, a late one is skipped**: Windows starts a run the computer slept through once it is on; a start after `latest` is skipped with a line in the log, so stale news is not made at full price after the off-peak window.
 - **Another anchor on some days**: `ROTA` in `series.py` swaps the anchor by weekday or date (e.g. `{"fri": dict(ANCHOR=..., VOICE=...)}`, a date first), and the schedule runs as usual.
-- **No news, no episode**: weekends and market holidays get one line with the reason. Monday covers Friday's close.
+- **No news, no episode**: a market holiday gets one line with the reason. What a day covers follows `days`: on `mon-fri`, Monday covers Friday's close; on `mon-sat` (the daily US brief since 2026-11), Saturday covers Friday's US close, Monday becomes a weekend news round-up (its opening line swapped in by `ROTA`'s `"mon"`, which `new` writes into the script), and Sunday is off.
 - **No duplicates, the cap kept**: `out/youtube.json` keeps the video id, so a rerun does not upload twice; each channel's daily cap still holds.
 - **It stops on an error**: a failed step is retried once; if it fails again the run stops and logs the step and the message. Never a half-made upload.
 - **A record**: Claude's whole output in the show's `logs/DATE.log`; one entry a day in `daily_log.md`: link, length, credits, minutes per step, words swapped, spots to listen to.
@@ -196,6 +201,7 @@ The same channel and anchor take one story all the way, e.g. "Why Lumentum took 
   - Primary sources first: SEC 8-Ks and 10-Ks, company releases, earnings calls. Then cross-check against English media, with every number agreed by two sources.
   - Leave out what sources disagree on, such as whether one company is a given customer's main supplier.
   - Local stocks appear only as "named by analysts", with the no-advice note.
+  - Run the [COMPLIANCE.md](COMPLIANCE.md) checklist on the finished script: bull and bear cases quoted with their sources; "what to watch" lists signals, not a verdict; valuation is never our own "cheap" or "expensive"; disputes read "who alleged what, how the company answered, where it stands". Once more before the render.
 - **Format**: the explainer line ([explain/](../explain/OVERVIEW.md)).
   - In `script.md`, one `###` per chapter under the narration heading. What is read is the subtitle, so numbers are written as words.
   - Misread words get a same-sounding swap in `SAY`, e.g. `("光纖", "光仙")`.
@@ -214,4 +220,12 @@ The same channel and anchor take one story all the way, e.g. "Why Lumentum took 
   - In-depth reports are not urgent, so `PRIVACY = "private"` is suggested: upload privately, publish after a look.
   - The episode number goes first in the title: `TITLE_PREFIX = "EP{ep}｜"`, `{ep}` being the episode folder's number (`e05_…` gives `EP5｜`); a title in the SEO file that already has it is left alone.
   - A daily show puts the date first: `TITLE_PREFIX = "{date}｜"`, `{date}` being the day folder's date (`2026-11-05` gives `11/5｜`); `seo` adds it when it writes the SEO file, and a date left at the end of a title moves to the front.
+- **A vertical trailer (Shorts)**: almost all of the news channel's views came from the Shorts feed, and YouTube hardly recommended the long reports (measured 2026-11). So each report gets a trailer under 60 s that sends people to it.
+  - Put `SHORTS = dict(clips=[(from these words, up to these words)], head=(two lines on top), end="完整報導：點下方影片", layout="band")` in `project.py` and run `explain/render.py EPISODE --shorts`. It only cuts the narration and pictures already made: no credits.
+  - Clip words are as `script.md` writes them. The opening and closing have the anchor's lip-sync: start a clip at the first line of that part, or the mouth is out of step.
+  - Data cards carry text: use `band` (the whole 16:9 picture across the middle), not a `square` crop.
+  - A trailer keeps to events and numbers. No list of the companies the market favours, no Taiwan stocks named by analysts, no valuation verdict: cut short and out of context they read like stock tips (see [COMPLIANCE](COMPLIANCE.md)).
+  - Add 「Shorts 標題」 and 「Shorts 說明欄」 sections to the SEO file: a title that opens on the hook, with no `EP` prefix and 「｜深度報導EP8」 at the end; the long report's link in the description.
+  - Upload with `news/make.py upload EPISODE --shorts` (the id goes in `out/youtube_shorts.json`). The related video cannot be set through the API: choose the long report in Studio. Trailers count against the daily cap.
+  - Several trailers for one report: `CUTS = {"shorts_b": dict(clips=[...], aspect="9:16", head=..., end=..., layout="band")}` in `project.py`, and `explain/render.py EPISODE --cut shorts_b` makes `<NAME>_shorts_b.mp4`. Add 「Shorts B 標題」 and 「Shorts B 說明欄」 sections to the SEO file and upload with `upload EPISODE --shorts b` (the id goes in `out/youtube_shorts_b.json`). `{full}` in a description becomes the long report's link at upload, so upload the long report first.
 - **Credits** (first episode, measured): narration in two parts 100, ten pictures 200, two lip-syncs 100: 400 submitted now, half off-peak.

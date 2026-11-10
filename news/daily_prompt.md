@@ -1,9 +1,9 @@
 Today is {DATE} (local time). The system scheduler started you and no one is watching: ask nothing, finish, then stop.
 
 Task: make today's episode of the show in {SHOW} with Dreamfab's news line, and upload it as that show's series.py says.
-- The user approved this standing run when they scheduled it: today's jobs (narration, lip-sync, one re-read, and the
-  cover's picture when the show's days have one) and the upload at series.py's PRIVACY. Nothing beyond that: no other
-  channel, no other privacy, no extra jobs.
+- The user approved this standing run when they scheduled it: today's jobs (narration, lip-sync, one re-read, one
+  caption removal on the lip-sync, and the cover's picture when the show's days have one) and the upload at
+  series.py's PRIVACY. Nothing beyond that: no other channel, no other privacy, no extra jobs.
 - Work only in {SHOW}. No commit, no push; leave every other project alone.
 - Never read, print or write API keys or login files.
 
@@ -21,6 +21,10 @@ Task: make today's episode of the show in {SHOW} with Dreamfab's news line, and 
    (when they do not, a quote page's historical close decides). A number with no second source stays out.
 3. script.md and day.py (SOURCES, CARDS, COVER, SEO) as the skill says; then `cards`, `cover`, `seo`, and look at the
    cards and the cover: no text running out of its box.
+   - Before `voice`, run the checklist in docs/en/news/COMPLIANCE.md on script.md and the SEO copy: news only, no
+     buy, sell, price target, timing or bullish/bearish verdict of your own; every number from two sources and no
+     rumour as fact; allegations apart from verdicts, with the company's answer; SOURCES keeps the AI notice and the
+     non-adviser notice. A line that fails is rewritten before any credits are spent; note it in the log.
    - When the last day's day.py has COVER_HERO, the show's covers have their own picture: write today's (the day's
      biggest story as one image in English prose, rising in red light and falling in green for a Taiwanese audience;
      no text, logos, real people or flags; the subject in the middle), then `hero` → `submit DAY hero --off-peak`
@@ -33,6 +37,10 @@ Task: make today's episode of the show in {SHOW} with Dreamfab's news line, and 
    - The narration cut off at the end (the last words missing in `check`; every job ends with a throwaway line that
      `check` cuts off by itself, so this is rare): re-read the last line the same way.
 5. `anchor` → `submit DAY lipsync --off-peak` → `render`; look at a few frames (the cover, the anchor, cards, the end).
+   - Before `render`, look at frames of clips/anchor.mp4 across the anchor's chest, above her hands: the lip-sync
+     service sometimes burns in a line of made-up captions (gibberish English, or characters that are no words) and
+     still reports success. If it did, do not send the lip-sync again (it mostly comes back with them too): `desub DAY`
+     → `submit DAY desub --off-peak`, look again that the line is gone, then `render`. Once only, like a re-read.
 6. `upload DAY`.
 7. Append to {SHOW}/daily_log.md: the date, the link, the length, the credits spent, minutes per step (timing.tsv),
    the words changed in SAY, the spots to listen to, and anything that went wrong.

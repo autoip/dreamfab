@@ -12,11 +12,14 @@ usage: python news/make.py new SERIES [YYYY-MM-DD]       a day folder: day.py fr
        python news/make.py seo DAY                      out/<NAME>_SEO.txt: hook titles, description, tags (not published)
        python news/make.py voice DAY                    jobs/voice.json: the whole narration in one job, ending with a
                                                         throwaway line that is cut off at the pause before it
-       python news/make.py submit DAY voice|hero|lipsync|redo [--off-peak]   run that job file (dreamfab/aip_runner.py)
+       python news/make.py submit DAY voice|hero|lipsync|desub|redo [--off-peak]   run that job file (dreamfab/aip_runner.py)
        python news/make.py check DAY                    transcribe voice/narr.flac; list words heard differently
        python news/make.py anchor DAY                   only the anchor's lines -> voice/anchor_in.wav (+0.6 s of
                                                         silence: lip-sync clips come back about 0.5 s short),
                                                         clips/anchor_map.json, jobs/lipsync.json (31 s at most)
+       python news/make.py desub DAY                    the lip-sync came back with made-up captions on it: keep it as
+                                                        clips/anchor_ng.mp4, jobs/desub.json clears them (video restore,
+                                                        30 credits per 8 s) back into clips/anchor.mp4
        python news/make.py redo DAY FIRST [LAST]        jobs/redo.json: read lines FIRST..LAST again (1 = first line)
        python news/make.py splice DAY FIRST [LAST]      put voice/redo.flac in place of those lines, cut at the pauses
                                                         (gaps of 0.3 s at least); the anchor clip is kept
@@ -24,6 +27,14 @@ usage: python news/make.py new SERIES [YYYY-MM-DD]       a day folder: day.py fr
        python news/make.py upload DAY [--public|--private]   to series.py's CHANNEL (its own login, YT_TOKEN) with the
                                                         SEO file's title A, description, tags, the subtitles and the
                                                         cover; PRIVACY in series.py, else private; daily cap kept
+         --shorts                                       the vertical cut out/<NAME>_shorts.mp4 instead (explain/render.py
+                                                        --shorts) with the SEO file's 「Shorts 標題」「Shorts 說明欄」
+                                                        sections and the tags, its subtitles, <NAME>_shorts_cover.jpg; the related
+                                                        video (the full report) is set in YouTube Studio
+         --shorts b                                     another cut of the same episode: out/<NAME>_shorts_b.mp4 with the
+                                                        「Shorts B 標題」「Shorts B 說明欄」 sections, <NAME>_shorts_b_cover.jpg
+                                                        (out/youtube_shorts_b.json); {full} in a Short's description
+                                                        becomes the full report's link (out/youtube.json)
        python news/make.py daily SERIES [--test]        today's episode with no one there: Claude Code (claude -p)
                                                         works through the show's daily instructions end to end;
                                                         SERIES/logs/DATE.log; --test only checks that Claude starts
@@ -246,14 +257,21 @@ def new_day(series, when=None):
     days = sorted(d for d in glob.glob(os.path.join(series, "????-??-??")) if os.path.exists(os.path.join(d, "day.py")) and d != day)
     dt = datetime.strptime(when, "%Y-%m-%d")
     label = f"{dt.month}/{dt.day}（{WEEK[dt.weekday()]}）"
+    ns = settings(os.path.join(series, "series.py"))
+    rota = {}
+    for k in (DAYS[dt.weekday()], when):   # ROTA for the day: a Monday's opening line is not about "last night"
+        rota.update(ns.get("ROTA", {}).get(k, {}))
+    ns.update(rota)
     if days:
         src = open(os.path.join(days[-1], "day.py"), encoding="utf-8").read()
         src = re.sub(r'^DATE\s*=.*$', f'DATE = "{label}"', src, flags=re.M)
+        for k in rota:   # day.py is read after ROTA: a one-line setting carried over from the last day would undo it
+            src = re.sub(rf'^{k}\s*=.*\n', "", src, flags=re.M)
         print(f"day.py from {os.path.basename(days[-1])}: rewrite SOURCES and CARDS for today")
     else:
-        src = f'DATE = "{label}"\nSOURCES = "資料來源：…<br>主播與聲音為 AI 生成｜僅供參考，不構成投資建議"\nCARDS = {{}}\n'
+        src = (f'DATE = "{label}"\nSOURCES = "資料來源：…<br>主播與聲音為 AI 生成｜本頻道非證券投資顧問事業，內容為新聞整理與公開資料，'
+               f'不構成投資建議"\nCARDS = {{}}\n')
     open(os.path.join(day, "day.py"), "w", encoding="utf-8", newline="\n").write(src)
-    ns = settings(os.path.join(series, "series.py"))
     lines = [f"# {when}", "", "每一行三欄，用全形直線隔開：唸的（數字寫國字）、字幕（阿拉伯數字）、畫面（anchor 或 CARDS 的 id）", "",
              ns.get("FIRST_LINE", "早安。｜早安｜anchor"), "", ns.get("LAST_LINE", "以上是今天的新聞。｜以上是今天的新聞｜anchor"),
              *([ns["CTA_LINE"]] if ns.get("CTA_LINE") else []),
@@ -490,10 +508,13 @@ def seo(day):
     print(out + ("" if not long else f"  !! {len(long)} title(s) over 60 characters: the hook may be cut off"))
 
 
-def upload(day, privacy=None):
+def upload(day, privacy=None, shorts=False):
     """Upload out/<NAME>.mp4 with title A, the description and tags of out/<NAME>_SEO.txt, the subtitles and the cover,
     to series.py's CHANNEL with its own login (YT_TOKEN), at PRIVACY (default private). Stops at the channel's daily cap
-    (youtube.daily_max); out/youtube.json keeps the id, so a second run does nothing."""
+    (youtube.daily_max); out/youtube.json keeps the id, so a second run does nothing. shorts: the vertical cut
+    out/<NAME>_shorts.mp4 with the SEO file's Shorts title and description and its vertical cover <NAME>_shorts_cover.jpg
+    (out/youtube_shorts.json); shorts="b": another cut, out/<NAME>_shorts_b.mp4 with the 「Shorts B 標題」「Shorts B 說明欄」
+    sections (out/youtube_shorts_b.json). {full} in a Short's description becomes the full report's link."""
     d, _ = load(day)
     if not d.get("CHANNEL"):
         sys.exit("series.py has no CHANNEL (the channel id) to upload to")
@@ -504,16 +525,30 @@ def upload(day, privacy=None):
     from googleapiclient.http import MediaFileUpload
     from dreamfab.youtube_api import youtube, channel
     from dreamfab.youtube_log import record, quota
-    name, od = name_of(day, d), os.path.join(day, "out")
-    state_p = os.path.join(od, "youtube.json")
+    base, od = name_of(day, d), os.path.join(day, "out")
+    v = shorts if isinstance(shorts, str) else ""   # a second or third cut of the Short: "b" -> <NAME>_shorts_b.mp4
+    name = base + ("_shorts" + (f"_{v}" if v else "") if shorts else "")
+    state_p = os.path.join(od, f"youtube_shorts{'_' + v if v else ''}.json" if shorts else "youtube.json")
     if os.path.exists(state_p):
         print("already uploaded: https://youtu.be/" + json.load(open(state_p, encoding="utf-8"))["id"]); return
-    seo_txt = open(os.path.join(od, f"{name}_SEO.txt"), encoding="utf-8").read()
+    seo_txt = open(os.path.join(od, f"{base}_SEO.txt"), encoding="utf-8").read()
     sec = dict(re.findall(r"=+ (.+?) =+\n(.*?)(?=\n=+ |\Z)", seo_txt, flags=re.S))
-    title = re.search(r"^A\. (.+)$", next(v for k, v in sec.items() if k.startswith("標題")), flags=re.M).group(1).strip()
-    desc = next(v for k, v in sec.items() if k.startswith("說明欄")).strip()
     tags = [t.strip() for t in next(v for k, v in sec.items() if k.startswith("標籤")).split(",") if t.strip()]
-    title = titled(title, day, d)
+    if shorts:   # the hook leads: no TITLE_PREFIX in front of a Short's title
+        label = f"Shorts {v.upper()}" if v else "Shorts"
+        if not any(k.startswith(f"{label} 標題") for k in sec):
+            sys.exit(f"{base}_SEO.txt has no 「{label} 標題」 and 「{label} 說明欄」 sections")
+        title = next(t for k, t in sec.items() if k.startswith(f"{label} 標題")).strip().splitlines()[0].strip()
+        desc = next(t for k, t in sec.items() if k.startswith(f"{label} 說明欄")).strip()
+        if "{full}" in desc:   # the full report's link: upload the long cut first
+            full_p = os.path.join(od, "youtube.json")
+            if not os.path.exists(full_p):
+                sys.exit("the Short's description links the full report ({full}): upload the full report first")
+            desc = desc.replace("{full}", "https://youtu.be/" + json.load(open(full_p, encoding="utf-8"))["id"])
+    else:
+        title = re.search(r"^A\. (.+)$", next(v for k, v in sec.items() if k.startswith("標題")), flags=re.M).group(1).strip()
+        desc = next(v for k, v in sec.items() if k.startswith("說明欄")).strip()
+        title = titled(title, day, d)
     if len(title) > 100 or len(desc.encode()) > 5000:
         sys.exit(f"title {len(title)} characters (100 at most) or description {len(desc.encode())} bytes (5,000 at most)")
     privacy = privacy or d.get("PRIVACY", "private")
@@ -542,29 +577,33 @@ def upload(day, privacy=None):
     vid = resp["id"]
     json.dump(dict(id=vid, channel=cid, title=title, privacy=privacy, at=datetime.now().isoformat(timespec="seconds")),
               open(state_p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    record(vid, "upload", title, day, "news")
+    kind = "shorts" if shorts else "news"
+    record(vid, "upload", title, day, kind)
     if privacy == "public":
-        record(vid, "publish", "uploaded public (news)", day, "news")
+        record(vid, "publish", "uploaded public (news)", day, kind)
     print(f"  uploaded https://youtu.be/{vid} ({privacy})")
     srt = os.path.join(od, f"{name}.zh-TW.srt")
     if os.path.exists(srt):
         yt.captions().insert(part="snippet", body=dict(snippet=dict(videoId=vid, language="zh-TW", name="", isDraft=False)),
                              media_body=MediaFileUpload(srt, mimetype="application/octet-stream")).execute()
-        record(vid, "captions", os.path.basename(srt), day, "news")
+        record(vid, "captions", os.path.basename(srt), day, kind)
         print("  captions", os.path.basename(srt))
-    cov = os.path.join(od, f"{name}_cover.jpg")
+    cov = os.path.join(od, f"{name}_cover.jpg")   # a Short's: <NAME>_shorts_cover.jpg, vertical (the Shorts tab shows it)
     if os.path.exists(cov):
         for wait in (0, 15, 30, 60):   # a fresh upload can be "not found" for a moment
             time.sleep(wait)
             try:   # the Shorts shelf picks its own frame; search and the watch page use this one
                 yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(cov, mimetype="image/jpeg")).execute()
-                record(vid, "thumbnail", os.path.basename(cov), day, "news")
+                record(vid, "thumbnail", os.path.basename(cov), day, kind)
                 print("  thumbnail", os.path.basename(cov))
                 break
             except HttpError as e:
                 if e.resp.status != 404 or wait == 60:
                     print("  !! thumbnail not set:", getattr(e, "reason", e))
                     break
+    if shorts:   # the related video (the full report) has no API: it is set in Studio
+        print("  next: in YouTube Studio set this Short's related video to the full report")
+        return
     if d.get("PLAYLIST"):
         yt.playlistItems().insert(part="snippet", body=dict(snippet=dict(
             playlistId=d["PLAYLIST"], resourceId=dict(kind="youtube#video", videoId=vid)))).execute()
@@ -726,6 +765,27 @@ def anchor(day):
                out=os.path.abspath(os.path.join(day, "clips", "anchor.mp4")).replace("\\", "/"))
     p = write_jobs(day, "lipsync", [job])
     print(f"{p}: {total:.1f} s from {len(spans)} parts (" + ", ".join(f"{a:.1f}-{b:.1f}" for a, b in spans) + ")")
+
+
+def desub(day):
+    """The lip-sync service sometimes burns a line of made-up captions across the anchor's chest (gibberish English, or
+    characters that are no words) and still reports success; a second lip-sync job tends to come back with them too, and
+    asking for no text in the prompt does not help. Keep that clip as clips/anchor_ng.mp4 (anchor_ng2.mp4, ... after
+    that) and write jobs/desub.json: AutoIP's video restore with operations[]=subtitle (30 credits per 8 s, half
+    off-peak), which clears the line and leaves the face, the mouth, the timing and the size alone. `submit DAY desub`
+    puts the clean clip at clips/anchor.mp4; look at it, then render."""
+    src = os.path.join(day, "clips", "anchor.mp4")
+    if not os.path.exists(src):
+        sys.exit(f"no {src}: submit lipsync first")
+    ng, k = os.path.join(day, "clips", "anchor_ng.mp4"), 1
+    while os.path.exists(ng):
+        k += 1
+        ng = os.path.join(day, "clips", f"anchor_ng{k}.mp4")
+    os.replace(src, ng)
+    job = dict(id="anchor_desub", endpoint="/videos/restore", fields={"operations[]": "subtitle"},
+               files=dict(source_video=os.path.abspath(ng).replace("\\", "/")), out=os.path.abspath(src).replace("\\", "/"))
+    p = write_jobs(day, "desub", [job])
+    print(f"{p}: {os.path.basename(ng)} without its captions -> clips/anchor.mp4 (submit DAY desub)")
 
 
 def check(day):
@@ -965,6 +1025,15 @@ def render(day):
     print(f"{out}  {length:.1f} s")
 
 
+def shorts_arg(rest):
+    """--shorts -> True; --shorts b -> "b" (another cut of the Short); no --shorts -> False."""
+    if "--shorts" not in rest:
+        return False
+    i = rest.index("--shorts")
+    nxt = rest[i + 1] if i + 1 < len(rest) else ""
+    return nxt.lower() if len(nxt) == 1 and nxt.isalpha() else True
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if len(a) < 2:
@@ -980,8 +1049,9 @@ if __name__ == "__main__":
     if cmd == "schedule":
         sys.exit(schedule(target, "--remove" in rest, "--dry-run" in rest))
     steps = dict(cards=lambda: cards(target), hero=lambda: hero(target), cover=lambda: cover(target), seo=lambda: seo(target),
-                 upload=lambda: upload(target, "private" if "--private" in rest else "public" if "--public" in rest else None), voice=lambda: voice(target), check=lambda: check(target),
-                 anchor=lambda: anchor(target), render=lambda: render(target),
+                 upload=lambda: upload(target, "private" if "--private" in rest else "public" if "--public" in rest else None,
+                                       shorts_arg(rest)), voice=lambda: voice(target), check=lambda: check(target),
+                 anchor=lambda: anchor(target), desub=lambda: desub(target), render=lambda: render(target),
                  redo=lambda: redo(target, nums[0], nums[-1]), splice=lambda: splice(target, nums[0], nums[-1]),
                  submit=lambda: submit(target, rest[0], "--off-peak" in rest))
     if cmd not in steps or (cmd in ("redo", "splice") and not nums) or (cmd == "submit" and not rest):
