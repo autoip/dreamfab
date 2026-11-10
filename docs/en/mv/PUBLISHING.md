@@ -95,7 +95,9 @@ Offer 2–3 candidates, plus a separate Shorts title.
 - [ ] Thumbnail A/B/C test.
 - [ ] Upload the vertical cut as the Short (WORKFLOW.md, "Vertical cut"): a landscape video is not treated as a Short.
 - [ ] Shorts thumbnail: upload one 9:16 `thumbnails/shorts_*.jpg` in YouTube Studio on a computer (see "Shorts thumbnails" above).
-- [ ] End screen: subscribe + playlist (the end card's duration is reserved for this).
+- [ ] **End screen (required; the API cannot set it)**: right after the upload, add in Studio (in Chrome): the next MV (the latest upload while there is no next one) + the season playlist + subscribe. The end card's duration is reserved for this. Compilations too. Then log it: `youtube_log.py add VIDEO end_screen TEXT`.
+- [ ] **A Short's related video (required; the API cannot set it)**: in the Short's Studio page pick the matching full MV as Related video. Then log it: `youtube_log.py add VIDEO related FULL_ID`.
+- [ ] Description links and search words: added by the uploader when the switch `youtube.links` is on (next section); otherwise write them yourself.
 - [ ] No real people or party names in the title, thumbnail or tags.
 
 When you upload with `mv/youtube_upload.py`, the subtitles, "altered or synthetic content", audience and the full MV's thumbnail are set for you (next section).
@@ -135,6 +137,15 @@ python mv/youtube_upload.py PROJECT_DIR --update                  # SEO file cha
 | 說明欄 / Description + API | the description for the API; falls back to the plain description |
 | Shorts + 說明欄 / Description | the Shorts description; `{full}` becomes the link to the full MV |
 | 標籤 / Tags | comma separated |
+| 搜尋字 / Keywords | optional: words viewers search for that the title lacks: the poem, aliases, a famous line, common misspellings (e.g. for a song called 《月下》: `靜夜思, 床前明月光`). Comma separated |
+
+**Automatic description links (switch `youtube.links`, off by default)**
+When on, the description of a **new** MV, compilation or Short upload ends with a block (videos already uploaded are never changed):
+- `▶ 下一首／更多 MV`: up to 3 of the other uploaded episodes in the same series folder (`youtube.json` of `sNeM_*`), the later episodes first, then the nearest earlier ones; a compilation (`sN_合集`) links the other seasons' compilations. Links already in the description are not repeated.
+- `▶ 播放清單`: the `--playlist` link (the playlist id is looked up before the upload; if it is not found nothing is uploaded).
+- `🔎` search words: the 《》 names of the title + the `搜尋字` section, only those not already in the description; with `opencc` installed (`pip install opencc-python-reimplemented`) the simplified forms are added too (洛神賦→洛神赋), otherwise list them under `搜尋字`. New words also go into the tags while they fit.
+- A Short gets the full MV's link instead of other episodes (not when `{full}` is already in its description).
+- The block is saved in `youtube.json`, so a later `--update` keeps it; past 5,000 bytes its last lines are dropped.
 
 **API limits** (the script checks them before sending)
 - Title ≤ 100 characters, no `<` or `>`.
@@ -144,7 +155,8 @@ python mv/youtube_upload.py PROJECT_DIR --update                  # SEO file cha
 - Quota: 10,000 units a day, plus up to 100 uploads a day. One video with thumbnail, subtitles and playlist is about 500 units (the subtitles alone are 400). The API itself is free.
 
 **Still by hand in Studio**
-- End screen, cards, pinned comment, thumbnail "Test & compare".
+- End screen (**every new MV and compilation**: next MV + playlist + subscribe), cards, pinned comment, thumbnail "Test & compare".
+- A Short's Related video (to the full MV): the Data API has no field for it; the uploader prints which video to pick.
 - A custom thumbnail for a Short: YouTube keeps an API thumbnail as a 16:9 image (the 9:16 picture in the middle, blurred sides) and the Shorts shelf does not use it. So the script sets no thumbnail on a Short and reminds you to upload `thumbnails/shorts_<letter>_*.jpg` in Studio on a computer (see "Shorts thumbnails" above).
 
 ## Tidying playlists (YouTube Data API)

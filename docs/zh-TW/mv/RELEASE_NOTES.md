@@ -2,6 +2,10 @@
 
 中文 | [English](../../en/mv/RELEASE_NOTES.md)
 
+## 未發布
+
+- **說明欄導流（開關 `youtube.links`，預設關）**：新上傳的 MV、合集、Shorts 說明欄最後自動加下一首／相關 MV、播放清單連結和搜尋字（`YouTube_SEO.txt` 新的 `搜尋字` 區段；裝了 opencc 會加簡體）。已上傳的影片不會被改。片尾畫面和 Shorts 相關影片 API 設不了，改成上架檢查表的必做步驟，上傳程式最後一行也會提醒。
+
 ## Dreamfab 0.9.0（2026-10-30）：第三條線「說」解說影片
 
 - **解說線 `explain/`**：把 MV 背後的歷史和傳說做成 3–6 分鐘橫式解說。一個克隆的旁白、文生圖的畫加上平滑推拉、MV 伴奏當配樂（每章一段、旁白出現時自動壓低）、跟著聲音走的字幕、結尾的 MV 片段放在金框裡。只用靜態圖，5 分鐘一集原價約 1,000 點。`narration.py`（依章節切段、送出後檢查：語速、要聽的字、結尾少句、鬼打牆）、`make_images.py`、`render.py`。說明見 [解說總覽](../explain/OVERVIEW.md)，範例在 `examples/explain/demo`，skill 是 `dreamfab-explain`。
