@@ -2,6 +2,10 @@
 
 [中文](../../zh-TW/mv/RELEASE_NOTES.md) | English
 
+## Unreleased
+
+- **Description links (switch `youtube.links`, off by default)**: a new MV, compilation or Short upload ends its description with the next/related MVs, the playlist link and search words (a new `搜尋字` section of `YouTube_SEO.txt`; simplified forms when opencc is installed). Videos already uploaded are never changed. End screens and a Short's related video have no API: they are required steps in the publishing checklist, and the uploader's last line reminds you.
+
 ## Dreamfab 0.9.0 (2026-10-30): the third line, 說 explainers
 
 - **Explain line `explain/`**: the history and legend behind an MV as a 3-6 minute landscape explainer, made of:
