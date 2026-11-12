@@ -569,10 +569,10 @@ def build(sections, words, cut, a, b, beats, theme, seed=7, plates=()):
                 zone, side = zone[0] + ("R" if side == "L" else "L"), ("R" if side == "L" else "L")
             pos = layout(toks, zone, size, vertical, rnd, voice)
             if is_title:  # the title as a theatre marquee, the rest of the line smaller underneath
-                head = [p for p in pos if p[0] in title][:len(title)]
-                rest = [p for p in pos if p not in head]
-                sp_ = min(320, 1500 / max(1, len(head)))
-                pos = [(k, x, 430, int(min(210, sp_ * 0.66)), 0.0) for (k, *_r), x in zip(head, title_xs(head, sp_))]
+                marq = [p for p in pos if p[0] in title][:len(title)]
+                rest = [p for p in pos if p not in marq]
+                sp_ = min(320, 1500 / max(1, len(marq)))
+                pos = [(k, x, 430, int(min(210, sp_ * 0.66)), 0.0) for (k, *_r), x in zip(marq, title_xs(marq, sp_))]
                 rl = layout([(k, 0) for k, *_r in rest], "BC", 92, False, rnd, voice)
                 pos += [(k, x, y - 70, f, r) for k, x, y, f, r in rl]
                 for x0 in (0, W / 2):  # curtains swing open
