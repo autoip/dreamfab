@@ -8,6 +8,7 @@ env:   REUSE_BODY=1   keep render_<MODE>/body_raw.mp4 (subtitle / card changes o
 edit:  size=(1080, 1920) renders a portrait cut: focus={src: 0..1} picks the horizontal crop centre per clip
        ("src@row_time": 0..1 for one shot, when the subject moves across the clip),
        zones={...} replaces epic.ZONES, typo={...} overrides TYPO keys (e.g. KTV size / margin / rows_y for a square cut),
+subtitles: TYPO style= ("epic" or "ktv"); without it, the workflow switch mv.subtitle_style
        open_card / end_card override RENDER's cards,
        crop={src: filter} is merged over RENDER's crop (e.g. a crop only the landscape cut needs)
        render=dict(fps=60, enhance=True) overrides RENDER for this edit, e.g. a 60 fps cut to compare
@@ -154,6 +155,7 @@ if seglist:
 
 # ---------- kinetic subtitles
 TH = {**proj.TYPO, **E.get("typo", {})}
+TH.setdefault("style", workflow("mv.subtitle_style", D))   # TYPO style= wins over the switch
 epic.configure(TH, D)
 epic.W, epic.H = W, H
 if "zones" in E:

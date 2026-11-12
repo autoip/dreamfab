@@ -123,6 +123,10 @@ EDITS = {"short": dict(cut=57.4, end=118.3, open_s=0, end_s=3, suffix="_1min", s
 | 欄位 | 說明 |
 |---|---|
 | `font` / `font_file` / `font_scale` / `latin` | 字型家族名（libass 看到的名稱）、量字寬用的檔案、字級係數、拉丁字型 |
+| `style` | `"epic"` 舞台劇動態字幕（本節其他欄位）或 `"ktv"` KTV 字幕；不寫就照工作流程開關 `mv.subtitle_style`（見 [WORKFLOW.md](../WORKFLOW.md)） |
+| KTV 用：`size` / `margin` / `margin_r` / `rows_y` | 字級、左右邊距、兩排的基線高度。不寫就依畫面形狀：橫式 76 字、邊距 220、底部兩排；直式 64 字、左 60 右 170、兩排在畫面 77%／82.5% 高（避開 Shorts 的標題區和右側按鈕）；方形 66 字、邊距 50 |
+| KTV 用：`sung` / `unsung` / `voice_sung` / `lead` | 唱過的顏色（預設 `4DD2FF`）、還沒唱的顏色（白）、`{聲部: 顏色}`、一句提早幾秒出現（1.0） |
+| KTV 用：`ktv_title` / `countdown` | `(起, 迄)` 歌曲秒數的片名卡；停唱超過幾秒的下一句前面出現四個倒數點 |
 | `title` / `title_en` / `tagline` / `genre` | 片名卡用。序幕的片名預設每個字隔一小節（4 拍）燒出 |
 | `intro_title_s` | 序幕片名停留的秒數，預設停到序幕結束。序幕很長時設短一點（例如 5） |
 | `hold` | `{句子: 秒數}`：那一句在最後一個字之後幾秒就收掉，預設留到下一句出現。喊聲之後接長靜音時用 |

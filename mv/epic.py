@@ -14,7 +14,8 @@ rising ash. Everything song-specific comes from the project's TYPO dict (see exa
   readings  {word: "romanization"}       small gold reading under rhyme words at the end of a line
   hold      {line text: seconds}         clear that line this long after its last word (a shout before a long silence)
   gags      [{"type": ..., "match": word or [words], ...}]  keyword effects, see GAGS below
-  style     "ktv"                       fixed KTV subtitles instead (see ktv(): two rows at the bottom, colour wipe)
+  style     "ktv"                       fixed KTV subtitles instead (see ktv(): two rows at the bottom, colour wipe);
+                                         without it the workflow switch mv.subtitle_style decides (render_mv.py)
 
 build(sections, words, cut, a, b, beats, theme, plates=()) -> list of ASS lines; times are body time (song - cut).
 """
@@ -429,18 +430,32 @@ def ktv_title(ev, T, t0, t1, th):
                                     f"\\c{col(WHITE)}\\alpha&H30&\\shad0{fad}", th["tagline"].upper(), 7)
 
 
+def ktv_frame():
+    """KTV defaults for this frame: (size, margin, margin_r, rows_y). Wide: as in a karaoke box. Portrait (a Short): the
+    rows sit above the bottom fifth, where YouTube puts the title and channel, and the right edge stays clear of the
+    like / comment buttons. Square: low and close to the edges."""
+    if W >= H * 1.5:
+        return 76, 220, 220, (H - 175, H - 80)
+    if H >= W * 1.5:
+        return 64, 60, 170, (round(H * 0.77), round(H * 0.825))
+    return 66, 50, 50, (H - 150, H - 62)
+
+
 def ktv(sections, words, cut, a, b, theme, beats=()):
     """KTV subtitles (TYPO style="ktv"): two fixed rows at the bottom; lines take turns, the upper row set from the
     left and the lower row from the right, as in a karaoke box. A line shows up a moment before it is sung and each
-    character fills with the sung colour while it is sung (\\kf). TYPO keys: size (76), sung ("4DD2FF"), unsung
-    (white), voice_sung ({voice: colour}), rows_y (two y positions of the baseline), margin (220 px), lead (1.0 s on screen
-    before the first character), ktv_title ((t0, t1) song seconds of the title card, see ktv_title()), countdown
+    character fills with the sung colour while it is sung (\\kf). TYPO keys: size, sung ("4DD2FF"), unsung (white),
+    voice_sung ({voice: colour}), rows_y (two y positions of the baseline), margin / margin_r (left / right edge; size,
+    rows_y and the margins default to the frame, see ktv_frame()), lead (1.0 s on screen before the first character),
+    ktv_title ((t0, t1) song seconds of the title card, see ktv_title()), countdown
     (seconds: a line after at least this long without singing gets four dots above its first character that go out one
     per beat, the last one as the singing starts)."""
     T = lambda t: t - cut
-    size0, margin, lead = theme.get("size", 76), theme.get("margin", 220), theme.get("lead", 1.0)
+    d_size, d_margin, d_margin_r, d_rows = ktv_frame()
+    size0, margin, lead = theme.get("size", d_size), theme.get("margin", d_margin), theme.get("lead", 1.0)
+    margin_r = theme.get("margin_r", margin if "margin" in theme else d_margin_r)
     sung, unsung = theme.get("sung", "4DD2FF"), theme.get("unsung", WHITE)
-    rows_y = theme.get("rows_y", (H - 175, H - 80))
+    rows_y = theme.get("rows_y", d_rows)
     voice_sung = theme.get("voice_sung", {})   # e.g. {"C": "F2C55C"}: the crowd's lines fill in gold
     lines, gaps, voices = [], [], []
     for s in sections:
@@ -467,7 +482,7 @@ def ktv(sections, words, cut, a, b, theme, beats=()):
         show = max(a, t0 - lead, hide[i - 2] + 0.05 if i >= 2 else a)
         text = "".join(k for k, _ in toks)
         size = size0
-        while size > 40 and text_w(text, size) + size * 0.5 * len(gaps[i]) > W - 2 * margin:   # a long line shrinks
+        while size > 40 and text_w(text, size) + size * 0.5 * len(gaps[i]) > W - margin - margin_r:   # a long line shrinks
             size -= 4
         bs = [x for x in beats if x <= toks[0][1] + 0.12][-4:]
         if theme.get("countdown") and len(bs) == 4 and toks[0][1] - (done[i - 1] if i else a) >= theme["countdown"]:
@@ -475,7 +490,7 @@ def ktv(sections, words, cut, a, b, theme, beats=()):
             d0 = max(a, bs[0] - 2 * beat, hide[i - 2] + 0.05 if i >= 2 else a)
             show = min(show, d0)
             r, y = 13, rows_y[i % 2] - FS(size) - 18
-            x0 = margin if i % 2 == 0 else W - margin - text_w(text, size) - size * 0.5 * len(gaps[i])
+            x0 = margin if i % 2 == 0 else W - margin_r - text_w(text, size) - size * 0.5 * len(gaps[i])
             for j in range(4):   # the leftmost dot goes out first, the last one on the first sung character
                 shape(ev, T(d0), T(bs[j]), x0 + j * 40, y, circle(r), sung, layer=6,
                       extra=f"\\bord3\\3c&H101010&\\fad(150,0)")
@@ -484,7 +499,7 @@ def ktv(sections, words, cut, a, b, theme, beats=()):
             nxt = toks[k + 1][1] if k + 1 < len(toks) else done[i]
             steps.append(f"{{\\kf{max(1, round((nxt - t) * 100))}}}{tok}" + ("\\h\\h" if k in gaps[i] else ""))
         upper = i % 2 == 0
-        pos = f"\\an1\\pos({margin},{rows_y[0]})" if upper else f"\\an3\\pos({W - margin},{rows_y[1]})"
+        pos = f"\\an1\\pos({margin},{rows_y[0]})" if upper else f"\\an3\\pos({W - margin_r},{rows_y[1]})"
         ev.add(T(show), T(hide[i]), f"{pos}\\fn{FONT}\\fs{FS(size)}\\b1\\bord5\\shad2\\3c&H101010&\\4c&H000000&"
                                      f"\\1c{col(voice_sung.get(voices[i], sung))}\\2c{col(unsung)}\\fad(150,200)", "".join(steps), 5)
     return head() + ev.rows

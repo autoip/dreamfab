@@ -24,6 +24,7 @@ It works like git's config: personal settings in your home folder, a project's e
 | `credits.max_parallel` | `1` | AutoIP tasks in flight at once. Most accounts allow one by day; `AIP_MAX` wins |
 | `explain.shorts` | `on` | explainers: `render.py` cuts the vertical Short after the episode (when `project.py` has `SHORTS`). Off: the episode alone |
 | `explain.shorts_layout` | `band` | the Short's layout when `SHORTS` has none: `band` (the whole picture) or `square` (its middle square) |
+| `mv.subtitle_style` | `epic` | MV lyric subtitles when `project.py`'s `TYPO` has no `style`: `epic` (kinetic stage typography) or `ktv` (two fixed karaoke rows, each character filling as it is sung; a portrait Short keeps clear of YouTube's caption area and side buttons). Only what you render from now on changes |
 | `video.enhance` | `off` | drama and MV: render from the GPU-enhanced `clips_hd/` copies (run that line's `enhance.py` first, see [GPU_ENHANCE.md](GPU_ENHANCE.md)) |
 | `youtube.privacy` | `private` | what an upload starts as: `private` (check it in Studio, publish there), `unlisted` or `public`. A scheduled upload is always private first |
 | `youtube.daily_max` | `6` | videos a channel uploads or publishes in one day, Shorts included, so it is not throttled; 6 or fewer is wise, `0` means no cap. The uploaders stop at the cap (`--over-limit` goes past it); the library's home page shows how many more can go out today |

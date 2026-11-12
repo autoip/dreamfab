@@ -8,6 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PIL import Image, ImageDraw
 import epic
 from common import load_project, jload, audio_path, label_font as font
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from dreamfab.workflow import get as workflow
 
 proj = load_project(sys.argv[1])
 a, b, out = float(sys.argv[2]), float(sys.argv[3]), sys.argv[4]
@@ -16,9 +18,10 @@ sections = jload(os.path.join(proj.DIR, "shots.json"))["sections"]
 wp = audio_path(proj, "words")
 words = jload(wp) if os.path.exists(wp) else []
 beats = jload(audio_path(proj, "beats"))["beats"]
-epic.configure(proj.TYPO, proj.DIR)
+TH = {"style": workflow("mv.subtitle_style", proj.DIR), **proj.TYPO}   # as render_mv.py does
+epic.configure(TH, proj.DIR)
 epic.OFFSCREEN.clear()
-rows = epic.build(sections, words, a, a, b, beats, proj.TYPO)
+rows = epic.build(sections, words, a, a, b, beats, TH)
 d = tempfile.mkdtemp()
 open(os.path.join(d, "p.ass"), "w", encoding="utf-8-sig").write("\n".join(rows) + "\n")
 fonts = os.path.join(proj.DIR, "fonts").replace("\\", "/").replace(":", "\\:")

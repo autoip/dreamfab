@@ -34,6 +34,10 @@ SWITCHES = [
     ("explain.shorts_layout", "band", ("band", "square"),
      "解說直版的版面（SHORTS 沒寫 layout 時）：band 整張畫在中間、square 取中間的正方形",
      "the Short's layout when SHORTS has none: band (the whole picture) or square (its middle square)"),
+    ("mv.subtitle_style", "epic", ("epic", "ktv"),
+     "MV 歌詞字幕（project.py 的 TYPO 沒寫 style 時）：epic 舞台劇動態字幕、ktv 底部兩排 KTV 字幕（唱到哪個字就填色）",
+     "MV lyric subtitles when TYPO has no style: epic (kinetic stage typography) or ktv (two fixed karaoke rows, each "
+     "character filling as it is sung)"),
     ("video.enhance", False, None,
      "短劇和 MV：成片用 GPU 超分補幀的 clips_hd（先跑 drama/enhance.py 或 mv/enhance.py；RENDER[\"enhance\"] 優先）",
      "drama and MV: render from the GPU-enhanced clips_hd copies (run its enhance.py first; RENDER[\"enhance\"] wins)"),

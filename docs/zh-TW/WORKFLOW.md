@@ -24,6 +24,7 @@
 | `credits.max_parallel` | `1` | 同時跑幾個 AutoIP 任務。多數帳號白天只能 1 個；環境變數 `AIP_MAX` 優先 |
 | `explain.shorts` | `on` | 解說：`render.py` 剪完寬版，接著剪直版 Shorts（`project.py` 要有 `SHORTS`）。關掉就只出寬版 |
 | `explain.shorts_layout` | `band` | 解說直版的版面（`SHORTS` 沒寫 `layout` 時）：`band` 整張畫在中間、`square` 取中間的正方形 |
+| `mv.subtitle_style` | `epic` | MV 歌詞字幕（`project.py` 的 `TYPO` 沒寫 `style` 時）：`epic` 舞台劇動態字幕、`ktv` 底部兩排 KTV 字幕（唱到哪個字就填色；直式 Shorts 自動避開 YouTube 的標題區和右側按鈕）。只影響之後渲的片，已經做好的不會變 |
 | `video.enhance` | `off` | 短劇和 MV：成片用 GPU 超分補幀的 `clips_hd/`（要先跑各線的 `enhance.py`，見 [GPU_ENHANCE.md](GPU_ENHANCE.md)） |
 | `youtube.privacy` | `private` | 上傳後的狀態：`private` 私人（在 Studio 看過再公開）、`unlisted` 不公開、`public` 公開。排程發布一定先私人 |
 | `youtube.daily_max` | `6` | 一個頻道一天最多上傳或公開幾支（Shorts 也算），避免被限流；建議不要超過 6，`0` 不限制。上傳程式到了上限就停（`--over-limit` 硬上），資源庫首頁的「庫存與出貨」顯示今天還能出幾支 |

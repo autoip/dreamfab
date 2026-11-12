@@ -123,6 +123,10 @@ How to write `shots`:
 | Field | Description |
 |---|---|
 | `font` / `font_file` / `font_scale` / `latin` | Font family name (as libass sees it), the file used to measure text width, the size factor, and the Latin font |
+| `style` | `"epic"` (kinetic stage typography, the other keys in this section) or `"ktv"` (karaoke subtitles); without it, the workflow switch `mv.subtitle_style` decides (see [WORKFLOW.md](../WORKFLOW.md)) |
+| KTV: `size` / `margin` / `margin_r` / `rows_y` | text size, left and right edges, the baselines of the two rows. Without them they follow the frame: wide 76, edges 220, two rows at the bottom; portrait 64, left 60 right 170, rows at 77% / 82.5% of the height (clear of a Short's caption area and side buttons); square 66, edges 50 |
+| KTV: `sung` / `unsung` / `voice_sung` / `lead` | the sung colour (default `4DD2FF`), the colour still to sing (white), `{voice: colour}`, seconds a line shows before it is sung (1.0) |
+| KTV: `ktv_title` / `countdown` | the title card as `(start, end)` song seconds; four countdown dots before a line that follows at least this many seconds of silence |
 | `title` / `title_en` / `tagline` / `genre` | Used for the title card. In the prologue the title burns in one character per bar (4 beats) by default |
 | `intro_title_s` | How many seconds the prologue title stays; by default until the prologue ends. Set it short (e.g. 5) when the prologue is long |
 | `hold` | `{line text: seconds}`: clear that line this long after its last word instead of waiting for the next line. For a shout followed by silence |
