@@ -194,6 +194,23 @@ What it does:
 - **It stops on an error**: a failed step is retried once; if it fails again the run stops and logs the step and the message. Never a half-made upload.
 - **A record**: Claude's whole output in the show's `logs/DATE.log`; one entry a day in `daily_log.md`: link, length, credits, minutes per step, words swapped, spots to listen to.
 
+### Also on Facebook (a Reel and a Story)
+A personal Facebook profile has no API for posting, so Claude in Chrome posts in the browser, in a Chrome already signed in to Facebook.
+```python
+DAILY = dict(at="06:30", days="mon-sat", latest="08:30", chrome=True)   # the scheduled claude -p gets --chrome
+FB_LINK = "YouTube："                                                    # the line over the YouTube link in the caption
+```
+```
+python news/make.py fb DAY                  # out/<NAME>_fb.mp4 (under 10 MB) and _fb.txt (the caption)
+python news/make.py fb DAY --posted reel    # record a post once it is up (reel or story)
+```
+- **YouTube first, then Facebook**: the caption carries the video's link (from `out/youtube.json`), on its own line.
+- **Under 10 MB**: the browser's upload tool takes 10 MB at most, so a two-pass encode squeezes the copy under `FB_MAX_MB` (default 9.5); the original is kept.
+- **The caption**: title A, the description's first paragraph, `FB_LINK` and the link, the sources, the disclaimer, the sponsor and the hashtags (each once). The disclaimer drops 「本頻道」 ("this channel"), since it is a personal profile.
+- **Nothing twice**: `out/fb.json` keeps what is posted; `fb DAY` prints what is left (`to post: reel, story`).
+- **How to post is in the show's own daily instructions** (`DAILY` `prompt`): the AI label on for the Reel and the Story, the audience, one retry at most. Before retrying, check the first try did not go up.
+- **The schedule runs as you**: the task must run only while you are signed in, so it can reach Chrome. If Chrome is closed, `daily` opens it first. A failure here never stops the episode itself.
+
 ## In-depth reports: 3-6 minutes, 16:9
 The same channel and anchor take one story all the way, e.g. "Why Lumentum took off, and why AI runs on light" (3:47, 9 chapters).
 

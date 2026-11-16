@@ -193,6 +193,23 @@ python news/make.py daily SHOW                # 排程每天叫的就是這個�
 - **出錯就停**：失敗的步驟重試一次，再失敗就停下來，寫下停在哪一步、錯誤訊息；不上傳半成品。
 - **留紀錄**：Claude 的完整輸出在節目資料夾的 `logs/日期.log`；`daily_log.md` 每天一段：網址、片長、點數、每步分鐘數、換了哪些字、請人聽的地方。
 
+### 也發到 Facebook（Reel、限時動態）
+Facebook 個人檔案沒有發文的 API，所以由 Claude in Chrome 在瀏覽器裡發，用的是你已經登入 FB 的 Chrome。
+```python
+DAILY = dict(at="06:30", days="mon-sat", latest="08:30", chrome=True)   # 排程的 claude -p 加上 --chrome
+FB_LINK = "YouTube："                                                    # 說明文字裡 YouTube 網址上面那一行
+```
+```
+python news/make.py fb DAY                  # out/<NAME>_fb.mp4（壓到 10 MB 以下）和 _fb.txt（說明文字）
+python news/make.py fb DAY --posted reel    # 發好了就記一筆（reel 或 story）
+```
+- **先上 YouTube 再發 FB**：說明文字要放影片網址（讀 `out/youtube.json`），網址自己一行。
+- **檔案壓到 10 MB 以下**：瀏覽器上傳工具一次最多 10 MB，所以用兩階段編碼壓到 `FB_MAX_MB`（預設 9.5），原檔不動。
+- **說明文字**：標題 A、說明欄第一段、`FB_LINK` 和網址、資料來源、警語、贊助、hashtag（重複的只留一個）。警語拿掉「本頻道」，因為發在個人檔案。
+- **不重複發**：`out/fb.json` 記下發過的；`fb DAY` 會印出還沒發的（`to post: reel, story`）。
+- **怎麼發寫在節目自己的每日指示裡**（`DAILY` 的 `prompt`）：Reel 和限時動態都要打開「AI 標籤」，選對象，最多再試一次。再試之前先確認剛剛那則沒有發出去。
+- **排程要用你的登入身分跑**：工作排程器要選「只在使用者登入時執行」，才叫得到 Chrome。Chrome 沒開時 `daily` 會先打開它。這一步出錯不會擋住影片本身。
+
 ## 深度報導：3–6 分鐘 16:9 長片
 同一個頻道、同一位主播，把一則新聞講透，例如〈Lumentum 為什麼紅？光，為什麼是 AI 的命脈〉（3 分 47 秒、9 章）。
 

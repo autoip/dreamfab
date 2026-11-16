@@ -35,6 +35,9 @@ usage: python news/make.py new SERIES [YYYY-MM-DD]       a day folder: day.py fr
                                                         「Shorts B 標題」「Shorts B 說明欄」 sections, <NAME>_shorts_b_cover.jpg
                                                         (out/youtube_shorts_b.json); {full} in a Short's description
                                                         becomes the full report's link (out/youtube.json)
+       python news/make.py fb DAY [--posted reel|story]   out/<NAME>_fb.mp4 (under 10 MB) and _fb.txt (the caption with
+                                                        the YouTube link) for a Facebook Reel and Story, posted in a
+                                                        browser; --posted records one in out/fb.json
        python news/make.py daily SERIES [--test]        today's episode with no one there: Claude Code (claude -p)
                                                         works through the show's daily instructions end to end;
                                                         SERIES/logs/DATE.log; --test only checks that Claude starts
@@ -56,7 +59,9 @@ SERIES/series.py (the show; see examples/news/demo):
   SPONSOR = dict(kicker=, name=, sub=)   the end card, shown once the anchor clip runs out (or END_CARD = a card id)
   DAILY = dict(at="06:30", days="mon-fri", latest="08:30")   the unattended run (`daily`, `schedule`): its time,
                                      skipped when it starts after `latest`; prompt= the instructions (default
-                                     news/daily_prompt.md), task= the scheduler's name for it
+                                     news/daily_prompt.md), task= the scheduler's name for it; chrome=True lets
+                                     the run use the browser too (Claude in Chrome: a Facebook Reel, `fb`)
+  FB_LINK = "YouTube："               the line over the YouTube link in the Facebook caption (`fb`)
   ROTA = {"fri": dict(ANCHOR="cast/ANCHOR_D.png", VOICE="voices/ANCHOR_D.wav"), "2026-11-05": dict(...)}
                                      another anchor (or any setting) on a weekday or a date; a date wins
   TITLE_PREFIX = "EP{ep}｜"           put before the titles (SEO file, upload); {ep} = the episode folder's number
@@ -318,10 +323,21 @@ def daily(series, test=False):
             prompt = prompt.replace("{" + k + "}", v.replace(os.sep, "/"))
     log = os.path.join(series, "logs", today + ("_test" if test else "") + ".log")
     tools = cfg.get("tools", "Bash,PowerShell,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch")
+    extra = []
+    if cfg.get("chrome") and not test:   # DAILY chrome=True: the run also works in the browser (Claude in Chrome)
+        extra, tools = ["--chrome"], tools + ",mcp__claude-in-chrome"
+        try:   # the browser is extra: whatever goes wrong here, the episode itself is still made
+            # bytes, not text: tasklist answers in the console's code page (Big5 here); the scheduler runs python -X utf8
+            if os.name == "nt" and b"chrome.exe" not in subprocess.run(["tasklist", "/FI", "IMAGENAME eq chrome.exe"],
+                                                                       capture_output=True).stdout:
+                subprocess.run("start chrome", shell=True)   # the extension needs a Chrome window, signed in as the person
+                time.sleep(15)
+        except Exception as e:
+            print("Chrome not checked:", e)
     with open(log, "a", encoding="utf-8", newline="\n") as f:
         f.write(f"== start {now.isoformat(timespec='seconds')}\n")
         f.flush()
-        r = subprocess.run([claude, "-p", prompt, "--allowedTools", tools], cwd=REPO, stdin=subprocess.DEVNULL,
+        r = subprocess.run([claude, "-p", prompt, "--allowedTools", tools] + extra, cwd=REPO, stdin=subprocess.DEVNULL,
                            stdout=f, stderr=subprocess.STDOUT, env=dict(os.environ, PYTHONIOENCODING="utf-8", AIP_MAX="1"))
         f.write(f"== end {datetime.now().isoformat(timespec='seconds')} exit {r.returncode}\n")
     print(f"{log} (exit {r.returncode})")
@@ -584,10 +600,18 @@ def upload(day, privacy=None, shorts=False):
     print(f"  uploaded https://youtu.be/{vid} ({privacy})")
     srt = os.path.join(od, f"{name}.zh-TW.srt")
     if os.path.exists(srt):
-        yt.captions().insert(part="snippet", body=dict(snippet=dict(videoId=vid, language="zh-TW", name="", isDraft=False)),
-                             media_body=MediaFileUpload(srt, mimetype="application/octet-stream")).execute()
-        record(vid, "captions", os.path.basename(srt), day, kind)
-        print("  captions", os.path.basename(srt))
+        for wait in (0, 15, 30, 60):   # a fresh upload can be "not found" (404) or "not sufficient" (403) for a moment
+            time.sleep(wait)
+            try:
+                yt.captions().insert(part="snippet", body=dict(snippet=dict(videoId=vid, language="zh-TW", name="", isDraft=False)),
+                                     media_body=MediaFileUpload(srt, mimetype="application/octet-stream")).execute()
+                record(vid, "captions", os.path.basename(srt), day, kind)
+                print("  captions", os.path.basename(srt))
+                break
+            except HttpError as e:
+                if e.resp.status not in (403, 404) or wait == 60:
+                    print("  !! captions not set:", getattr(e, "reason", e))
+                    break
     cov = os.path.join(od, f"{name}_cover.jpg")   # a Short's: <NAME>_shorts_cover.jpg, vertical (the Shorts tab shows it)
     if os.path.exists(cov):
         for wait in (0, 15, 30, 60):   # a fresh upload can be "not found" for a moment
@@ -1025,6 +1049,58 @@ def render(day):
     print(f"{out}  {length:.1f} s")
 
 
+def fb(day, posted=None):
+    """out/<NAME>_fb.mp4 and out/<NAME>_fb.txt: the episode as a Facebook Reel and Story, posted in a browser (a personal
+    profile has no API). The copy is squeezed under FB_MAX_MB (default 9.5: the browser tool takes 10 MB at most) in two
+    passes, the original kept. The caption: title A, the description's first paragraph, FB_LINK (series.py) with the
+    YouTube link on its own line under it (out/youtube.json: upload first), the sources, the disclaimer (without
+    「本頻道」: it is the person's own profile), the sponsor and the hashtags once each. out/fb.json keeps what is posted:
+    `fb DAY --posted reel|story` records one, and `fb DAY` says what is left, so a second run posts nothing twice."""
+    d, _ = load(day)
+    name, od = name_of(day, d), os.path.join(day, "out")
+    state_p = os.path.join(od, "fb.json")
+    state = json.load(open(state_p, encoding="utf-8")) if os.path.exists(state_p) else {}
+    if posted:
+        if posted not in ("reel", "story"):
+            sys.exit("--posted reel or --posted story")
+        state[posted] = datetime.now().isoformat(timespec="seconds")
+        json.dump(state, open(state_p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        print(f"{state_p}: {posted} posted")
+        return
+    yt_p = os.path.join(od, "youtube.json")
+    if not os.path.exists(yt_p):
+        sys.exit("upload to YouTube first: the caption links the video (out/youtube.json)")
+    src, out = os.path.join(od, f"{name}.mp4"), os.path.join(od, f"{name}_fb.mp4")
+    if not os.path.exists(out):
+        dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src],
+                                   capture_output=True, text=True, check=True).stdout)
+        audio = 128_000
+        video = int((d.get("FB_MAX_MB", 9.5) * 1_000_000 * 8 / dur - audio) * 0.95)   # 5% for the container
+        log = os.path.join(od, "_fb_pass")
+        common = ["ffmpeg", "-y", "-v", "error", "-i", src, "-c:v", "libx264", "-b:v", str(video), "-preset", "medium",
+                  "-pix_fmt", "yuv420p", "-passlogfile", log]
+        subprocess.run(common + ["-pass", "1", "-an", "-f", "mp4", os.devnull], check=True)
+        subprocess.run(common + ["-pass", "2", "-c:a", "aac", "-b:a", str(audio), "-movflags", "+faststart", out], check=True)
+        for f in glob.glob(log + "*"):
+            os.remove(f)
+    sec = dict(re.findall(r"=+ (.+?) =+\n(.*?)(?=\n=+ |\Z)", open(os.path.join(od, f"{name}_SEO.txt"), encoding="utf-8").read(),
+                          flags=re.S))
+    title = re.search(r"^A\. (.+)$", next(v for k, v in sec.items() if k.startswith("標題")), flags=re.M).group(1).strip()
+    desc = next(v for k, v in sec.items() if k.startswith("說明欄")).strip()
+    lines = desc.splitlines()
+    pick = lambda test: next((l.strip() for l in lines if test(l.strip())), "")
+    tags = list(dict.fromkeys(t for l in lines if l.strip().startswith("#") for t in l.split()))
+    url = "https://youtu.be/" + json.load(open(yt_p, encoding="utf-8"))["id"]
+    caption = "\n".join([titled(title, day, d), "", desc.split("\n\n")[0].strip(), "", d.get("FB_LINK", "YouTube："), url, "",
+                         pick(lambda l: l.startswith("資料來源")),
+                         pick(lambda l: "不構成投資建議" in l).replace("本頻道非", "非").replace("本頻道", ""),
+                         pick(lambda l: "贊助" in l), " ".join(tags)]).strip() + "\n"
+    open(os.path.join(od, f"{name}_fb.txt"), "w", encoding="utf-8", newline="\n").write(caption)
+    mb = os.path.getsize(out) / 1_000_000
+    left = [k for k in ("reel", "story") if k not in state]
+    print(f"{out}  {mb:.1f} MB\n{os.path.join(od, name + '_fb.txt')}\nto post: {', '.join(left) or 'nothing (all posted)'}")
+
+
 def shorts_arg(rest):
     """--shorts -> True; --shorts b -> "b" (another cut of the Short); no --shorts -> False."""
     if "--shorts" not in rest:
@@ -1053,7 +1129,8 @@ if __name__ == "__main__":
                                        shorts_arg(rest)), voice=lambda: voice(target), check=lambda: check(target),
                  anchor=lambda: anchor(target), desub=lambda: desub(target), render=lambda: render(target),
                  redo=lambda: redo(target, nums[0], nums[-1]), splice=lambda: splice(target, nums[0], nums[-1]),
-                 submit=lambda: submit(target, rest[0], "--off-peak" in rest))
+                 submit=lambda: submit(target, rest[0], "--off-peak" in rest),
+                 fb=lambda: fb(target, rest[rest.index("--posted") + 1] if "--posted" in rest[:-1] else None))
     if cmd not in steps or (cmd in ("redo", "splice") and not nums) or (cmd == "submit" and not rest):
         sys.exit(__doc__)
     steps[cmd]()
