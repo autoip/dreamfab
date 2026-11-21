@@ -459,7 +459,9 @@ def hero(day):
 def cover(day):
     """out/<NAME>_cover.jpg (1080x1920): the hook at the top, one line below, over the day's own picture
     (images/cover_hero.png from `hero`, or COVER_IMAGE); without one, over the anchor with her face kept clear.
-    day.py: COVER = dict(lines=[(text, colour), ...], sub="...", shift=420)  colour: up | down | gold | white"""
+    day.py: COVER = dict(lines=[(text, colour), ...], sub="...", shift=420)  colour: up | down | gold | white
+    YouTube on a computer shows a Short's cover as a 2:3 tile, 150 px off the top and the bottom of 1080x1920: the date
+    and the box below stay between y 190 and 1730 (11/21: the date was cut in half)."""
     import pathlib
     d, _ = load(day)
     c = d.get("COVER")
@@ -482,13 +484,13 @@ def cover(day):
             f'<div style="position:absolute;left:0;right:0;top:0;height:{shift + 260}px;'
             f'background:linear-gradient(#070d1a 0%,#070d1a {int(shift / (shift + 260) * 100)}%,#070d1a00 100%)"></div>'
             f'<div style="position:absolute;left:0;right:0;bottom:0;height:620px;background:linear-gradient(#070d1a00,#070d1aee 55%)"></div>'
-            f'<div style="position:absolute;left:60px;right:60px;top:60px">'
+            f'<div style="position:absolute;left:60px;right:60px;top:190px">'
             f'<div style="display:flex;justify-content:space-between;align-items:center">'
             f'<div style="background:#f5c542;color:#0b1426;font-size:124px;font-weight:900;line-height:1;padding:16px 34px 20px;'
             f'border-radius:26px">{when}</div>'
             f'<div style="text-align:right;font-size:58px;font-weight:900;line-height:1.15">{b1}<br>{b2}</div></div>'
             f'<div style="margin-top:36px">{lines}</div></div>'
-            f'<div style="position:absolute;left:50px;right:50px;bottom:200px;padding:30px 40px;border-radius:26px;'
+            f'<div style="position:absolute;left:50px;right:50px;bottom:250px;padding:30px 40px;border-radius:26px;'
             f'background:rgba(8,16,34,.88);border-left:14px solid #f5c542;font-size:52px;font-weight:700;line-height:1.35">{c.get("sub", "")}</div>')
     os.makedirs(os.path.join(day, "out"), exist_ok=True)
     png = os.path.join(day, "out", "_cover.png")
