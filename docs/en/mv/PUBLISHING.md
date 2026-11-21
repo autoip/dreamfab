@@ -36,7 +36,7 @@ In the Shorts feed the video plays straight away, so viewers never see the thumb
 ```python
 tk.W, tk.H = 1080, 1920
 im = tk.shade(tk.frame(src("<id>_<seconds>.png"), 1.0, 0.5, 0.5), "top", strength=150, width=0.22)
-tk.title(im, (540, 150), "TITLE", 200, 0.12)
+tk.title(im, (540, 330), "TITLE", 200, 0.12)
 tk.badge(im)
 tk.grain(im).save(os.path.join(out, "shorts_A_duet.jpg"), quality=95)
 ```
@@ -51,6 +51,7 @@ tk.grain(im).save(os.path.join(out, "shorts_A_duet.jpg"), quality=95)
 
 **Rules (the landscape rules still apply):**
 - Keep key text in the top three quarters, above y = 1440. The Shorts shelf on mobile lays the video title over the bottom edge of the thumbnail.
+- Keep all text between y = 190 and 1730. On a computer, the Shorts shelf and the channel's Shorts tab crop the thumbnail to 2:3, cutting 150 px off the top and the bottom of 1080×1920. `tk.safe()` returns that band; `title`, `text` and the other text helpers print a warning for a line outside it, and `badge` places itself inside it. Check thumbnails on the middle 2:3.
 - It must still be readable at 180 px wide, the size of a card on the mobile Shorts shelf.
 - The thumbnail and the Shorts title use the same hook. A hook-line title goes with B.
 

@@ -36,7 +36,7 @@ Shorts 在動態裡會直接播放，觀眾看不到縮圖。縮圖出現在首�
 ```python
 tk.W, tk.H = 1080, 1920
 im = tk.shade(tk.frame(src("<id>_<秒>.png"), 1.0, 0.5, 0.5), "top", strength=150, width=0.22)
-tk.title(im, (540, 150), "片名", 200, 0.12)
+tk.title(im, (540, 330), "片名", 200, 0.12)
 tk.badge(im)
 tk.grain(im).save(os.path.join(out, "shorts_A_duet.jpg"), quality=95)
 ```
@@ -51,6 +51,7 @@ tk.grain(im).save(os.path.join(out, "shorts_A_duet.jpg"), quality=95)
 
 **規則（橫式的規則照樣適用）：**
 - 關鍵文字放在畫面上方四分之三，也就是 y < 1440。手機首頁的 Shorts 架會把影片標題疊在縮圖下緣。
+- 所有的字都放在 y 190–1730 之間。電腦版的 Shorts 架和頻道的 Shorts 分頁會把縮圖裁成 2:3，1080×1920 上下各切掉 150 px。`tk.safe()` 會傳回這段範圍；字超出時，`title`、`text` 這些函式會印出警告，`badge` 會自己放進範圍裡。檢查縮圖時看中間 2:3 那一塊。
 - 縮到 180 px 寬仍要讀得出來，這是手機 Shorts 架上的大小。
 - 縮圖和 Shorts 標題用同一個鉤子，例如標題用梗句就配 B。
 

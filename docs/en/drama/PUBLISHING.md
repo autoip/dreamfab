@@ -22,6 +22,7 @@ A short drama is followed episode by episode: each episode's cover, title and de
 - One cover says one thing: one face, one hook.
 - Text must not cover a face, and must still be readable when shrunk to 180 px wide (the size in a phone's list).
 - On vertical covers, keep key text at y < 1440: apps lay the title over the bottom edge.
+- If a vertical cover goes on a YouTube Short, keep all text between y = 190 and 1730: YouTube on a computer crops a Short's thumbnail to 2:3, cutting 150 px off the top and the bottom. `tk.safe()` returns that band, the `tk` text helpers print a warning for a line outside it, and `tk.badge` places itself inside it.
 - Put the episode number in a fixed place (`tk.badge`), with one layout for the whole series.
 - The hook can spoil "what happened", but not "why".
 

@@ -14,7 +14,9 @@ Rules that held up: one face or one gag per thumbnail, title never over a face, 
 
 Shorts thumbnails (1080x1920): set  tk.W, tk.H = 1080, 1920  first. frame / shade / split / badge / grain read W and H
 at call time. Grab frames from clips/<id>.mp4 (the vertical render has lyrics burned in), keep key text above y = 1440
-(the mobile Shorts shelf lays the video title over the bottom quarter) and check it at 180 px wide.
+(the mobile Shorts shelf lays the video title over the bottom quarter) and all text between y = 190 and 1730 (YouTube on
+a computer crops a Shorts thumbnail to 2:3: safe()), and check it at 180 px wide. The text helpers print a warning for a
+line outside that band; badge() stays inside it.
 """
 import random
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
@@ -30,6 +32,23 @@ def setup(title_font, latin_font):
 
 SERIF = lambda size: ImageFont.truetype(_F["title"], size)
 LATIN = lambda size: ImageFont.truetype(_F["latin"], size)
+
+
+def safe(margin=40):
+    """(top, bottom): the rows of a vertical cover that YouTube shows on a computer. The Shorts shelf and a channel's
+    Shorts tab crop it to 2:3 around the middle, 150 px off the top and the bottom of 1080x1920 (2026-11: a date and a
+    series tag at the very top were cut in half there, whole on a phone), so text stays inside, margin px in. A landscape
+    cover: the whole height."""
+    cut = max(0.0, (H - W * 1.5) / 2)
+    return (round(cut + margin), round(H - cut - margin)) if cut else (0, H)
+
+
+def _inside(y0, y1, s):
+    """Warn when a line of text reaches outside the rows safe() keeps."""
+    top, bottom = safe(0)
+    if y0 < top or y1 > bottom:
+        print(f"  !! 「{s}」 at y {y0:.0f}-{y1:.0f}: YouTube on a computer shows only y {top}-{bottom} of this cover"
+              " (a 2:3 crop), so it is cut off; keep text inside safe()")
 
 
 def frame(path, zoom=1.0, cx=0.5, cy=0.5):
@@ -74,6 +93,7 @@ def title(im, xy, text, size, spacing=0.06):
     d0 = ImageDraw.Draw(im)
     w = sum(d0.textlength(c, font=f) for c in text) + size * spacing * (len(text) - 1)
     x, y = xy[0] - w / 2, xy[1]
+    _inside(y - size * 0.6, y + size * 0.6, text)
     glow = Image.new("RGBA", im.size, (0, 0, 0, 0)); g = ImageDraw.Draw(glow)
     lay = Image.new("RGBA", im.size, (0, 0, 0, 0)); d = ImageDraw.Draw(lay)
     for c in text:
@@ -88,6 +108,7 @@ def title(im, xy, text, size, spacing=0.06):
 
 def text(im, xy, s, size, edge=(0, 0, 0), stroke=7):
     """Left-anchored punchline text."""
+    _inside(xy[1] - size * 0.6, xy[1] + size * 0.6, s)
     ImageDraw.Draw(im).text(xy, s, font=SERIF(size), fill=WHITE, anchor="lm", stroke_width=stroke, stroke_fill=edge)
 
 
@@ -97,6 +118,7 @@ def strike(im, x0, x1, y, width=12):
 
 def caps(im, xy, text, size, color=GOLD, spacing=10):
     """Letter-spaced latin caps centred at xy."""
+    _inside(xy[1] - size * 0.6, xy[1] + size * 0.6, text)
     d = ImageDraw.Draw(im); f = LATIN(size)
     w = sum(d.textlength(c, font=f) for c in text) + spacing * (len(text) - 1)
     x = xy[0] - w / 2
@@ -113,14 +135,16 @@ def rule(im, cx, y, w, color=GOLD, t=3):
 def banner(im, cx, cy, text, size, fill=BLOOD, color=WHITE, slant=16):
     d = ImageDraw.Draw(im); f = SERIF(size)
     w = d.textlength(text, font=f); hw, hh = w / 2 + 30, size * 0.78
+    _inside(cy - hh, cy + hh, text)
     d.polygon([(cx - hw + slant, cy - hh), (cx + hw + slant, cy - hh), (cx + hw - slant, cy + hh), (cx - hw - slant, cy + hh)], fill=fill)
     d.text((cx, cy), text, font=f, fill=color, anchor="mm")
 
 
 def badge(im, text="MV"):
-    d = ImageDraw.Draw(im)
-    d.rectangle((W - 116, 22, W - 22, 70), fill=(0, 0, 0), outline=GOLD, width=3)
-    d.text((W - 69, 46), text, font=LATIN(30), fill=GOLD, anchor="mm")
+    """A small tag in the top right corner (on a Shorts thumbnail, as high as YouTube still shows: safe())."""
+    d = ImageDraw.Draw(im); y = max(22, safe()[0])
+    d.rectangle((W - 116, y, W - 22, y + 48), fill=(0, 0, 0), outline=GOLD, width=3)
+    d.text((W - 69, y + 24), text, font=LATIN(30), fill=GOLD, anchor="mm")
 
 
 def grain(im, amount=10, seed=3):

@@ -125,7 +125,8 @@ python news/make.py seo   DAY        # out/<NAME>_SEO.txt
 - **Cover** (`COVER` in `day.py`):
   - The anchor's picture moves down so her face stays in the middle, clear of the text.
   - The date leads, large on a yellow banner (`DATE` turned into 「11/3 週二」, or `COVER_DATE`): a daily show must show its day even in a phone's small tile.
-  - A channel's Shorts tab now shows the uploaded thumbnail too (in 2026-11 a thumbnail changed through the API changed it there). Swiping through Shorts shows the video itself, so `COVER_FRAME` still makes the first frame the cover; run `cover` before `render`.
+  - YouTube on a computer crops a Short's thumbnail to 2:3, cutting 150 px off the top and the bottom of 1080×1920, so the date and the box below sit between y = 190 and 1730 (in 2026-11 the date was cut in half there, while it looked whole on a phone).
+  - The channel's Shorts tab and the Shorts shelf show the uploaded thumbnail, but one set through the API often does not take (Studio's list still shows a frame of the video). After uploading, check in Studio on a computer and upload it there again if it did not change. Swiping through Shorts shows the video itself, so `COVER_FRAME` still makes the first frame the cover; run `cover` before `render`.
   - Two big hook lines go above her: the day's biggest number first (red up, green down), then a question.
   - One line below her carries the next two stories.
 - **SEO** (`SEO` in `day.py`):
