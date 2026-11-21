@@ -55,7 +55,7 @@ the others), with its subtitles added to the end of the .srt: a series' one call
 import os, subprocess, sys
 import numpy as np
 from common import load_project, jload, venc, chapters, written, narration, words_path, transcribe, align_item, lines, \
-    ass_time, sub_styles, sub_events, translations, asr_language, pause_after
+    ass_time, sub_styles, sub_events, translations, asr_language, pause_after, pause_before_tail, tail_start
 from dreamfab.workflow import get as workflow
 
 W, H, FPS = 1920, 1080, 30
@@ -169,9 +169,9 @@ def build():
                                       it["audio"]], capture_output=True, text=True, check=True).stdout)
             parts.append(dict(path=it["audio"], text="", ct=[], dur=d, sound=True)); continue
         w = jload(words_path(it["audio"]))
-        ct, _ = align_item(it, w["words"])
+        ct, info = align_item(it, w["words"])
         parts.append(dict(path=it["audio"], text=written(it["text"], proj), ct=ct, dur=w["duration"], more=it["more"],
-                          late=it["late"]))
+                          late=it["late"], tail_at=tail_start(info) if it.get("tail") else None))
 
     def start(p):
         """Where a part starts in its file: 0, or for a start_at part the end of the last pause before its first word."""
@@ -196,6 +196,14 @@ def build():
         nxt = next((ct[i] for i in range(b, len(ct)) if ct[i]), None)
         if nxt is None and not p["more"]:
             return p["dur"], p["dur"]
+        if nxt is None and p.get("tail_at"):   # the throwaway TAIL follows: end before it starts, however short the pause
+            gap = pause_before_tail(p["path"], last[0] - 0.05, p["tail_at"])
+            if gap:
+                s, e = gap
+                return min(s + 0.06, (s + e) / 2), max(e - 0.04, (s + e) / 2)
+            print(f"  !! {os.path.basename(p['path'])}: no pause after 「{p['text'][max(0, b - 8):b].strip()}」, cut where"
+                  f" the throwaway line starts, {p['tail_at']:.2f} s: listen to it")
+            return p["tail_at"], p["tail_at"]
         hi = min(p["dur"], (max(last[1], nxt[0]) if nxt else p["dur"]) + 0.6)
         gap = pause_after(p["path"], last[0] - 0.05, hi)
         if gap:

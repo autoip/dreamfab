@@ -19,7 +19,7 @@ Submit with: python dreamfab/aip_runner.py PROJECT_DIR/jobs/voice_jobs.json [--o
 """
 import os, subprocess, sys
 from common import load_project, P, jload, jdump, estimate, off_peak, chapters, spoken, narration, words_path, transcribe, align, PUNCT, \
-    asr_language, tail, pause_after
+    asr_language, tail, pause_after, pause_before_tail, tail_start
 
 if len(sys.argv) < 3 or sys.argv[2] not in ("jobs", "check", "cut"):
     sys.exit(__doc__)
@@ -90,9 +90,14 @@ elif cmd == "check":
         last_b = max((b + k for a, b, k in info["blocks"] if k), default=0)
         if n - last_a > 6:
             print(f"  !! the last {n - last_a} characters were not heard: the voice stopped early (re-read the ending)")
-        elif it["tail"]:   # the throwaway line follows: is there a pause to end the part in?
-            if not pause_after(it["audio"], ct[info["idx"][-1]][0] - 0.05):
+        elif it["tail"]:   # the throwaway line follows: is there a pause before it to end the part in?
+            t0, ta = ct[info["idx"][-1]][0] - 0.05, tail_start(info)
+            gap = pause_before_tail(it["audio"], t0, ta) if ta else pause_after(it["audio"], t0)
+            if not gap:
                 print("  !! no pause after the last words: the throwaway line runs into them (listen to the ending)")
+            elif gap[1] - gap[0] < 0.06:
+                print(f"  only {(gap[1] - gap[0]) * 1000:.0f} ms of pause before the throwaway line, at {mmss(gap[0])}:"
+                      " render.py cuts there (listen to the ending)")
         elif os.path.exists(it["audio"]) and not pause_after(it["audio"], max(0.0, dur - 0.08)):
             print("  !! the file ends in the middle of a sound: the last syllable is cut off (re-read the ending; new jobs"
                   " end with a throwaway line, common.TAIL)")

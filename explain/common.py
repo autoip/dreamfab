@@ -92,6 +92,28 @@ def pause_after(path, t, until=None, thr=-50.0, min_len=0.06):
     return None
 
 
+def pause_before_tail(path, t, tail_at):
+    """The pause between a part's last words (from t seconds) and its throwaway TAIL, which the recogniser starts at
+    tail_at: the first pause of the usual length that starts before the TAIL, else the longest short one. Searching on
+    to the end of the file found a pause after the TAIL instead (e22: only 40 ms before 謝謝收看 in two parts, and the
+    video said 謝謝收看 twice). (start, end) in seconds, or None."""
+    until = tail_at + 0.1
+    gap = pause_after(path, t, until)
+    if gap:
+        return gap
+    short = []
+    while (g := pause_after(path, t, until, min_len=0.02)):
+        short.append(g); t = g[1] + 0.01
+    return max(short, key=lambda g: g[1] - g[0], default=None)
+
+
+def tail_start(info):
+    """When the throwaway TAIL starts in a part's file: the first recognised character after the text's last match
+    (align()'s info), or None if nothing was heard after the text."""
+    last_b = max((b + k for a, b, k in info["blocks"] if k), default=0)
+    return info["asr_t"][last_b][0] if last_b < len(info["asr_t"]) else None
+
+
 def spoken(text, proj):
     """What the voice reads: SAY swaps rare characters for same-sounding common ones (宓妃 -> 伏妃) so the voice model
     does not misread them. Each pair has the same length, so subtitles and timings map one to one."""
