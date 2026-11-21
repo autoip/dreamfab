@@ -32,8 +32,10 @@ picked from explain/sub_styles.py (default: outline, FONT's family, 58); chars=1
 line (default: what fits 3/4 of the width; large subtitles for older viewers).
 Writes out/NAME.mp4 and out/NAME.<lang>.srt (YouTube indexes uploaded captions for search).
 SHOTS = [(image, first words, move, focus)]: the picture comes in when the narration reaches those words (searched in
-order). move: in / out (zoom towards / away from focus=(x, y) in 0..1), left / right (pan), frame (whole picture in a
-gold frame: covers with lettering), scroll (a long handscroll on a white ground: cut out and panned right to left).
+order). move: in / out (zoom towards / away from focus=(x, y) in 0..1), left / right (pan), card (a data card or a
+slide of text: in, out and the pans leave out 12-14% of the width, which eats the words near the edges, so this only
+pushes in 3% on the middle), frame (whole picture in a gold frame: covers with lettering), scroll (a long handscroll on a white
+ground: cut out and panned right to left).
 image "MV:12.5" plays MV_CLIP from 12.5 s in the gold frame. CLIPS = {"KEY": "path/to/video.mp4", ...}: image "KEY:3.0"
 plays that video from 3.0 s across the whole picture (a vertical one stands in the middle on a blurred copy of itself;
 move "frame": in the gold frame instead). Their own sound is not used: a line worth hearing goes in NARRATION as
@@ -559,7 +561,9 @@ def build():
             cv2.rectangle(fr, (x - 3, y - 3), (x + vw + 2, y + st.shape[0] + 2), GOLD_BGR, 1, cv2.LINE_AA)
             fr[y:y + st.shape[0], x:x + vw] = win
             return fr
-        if mv == "in":
+        if mv == "card":   # lettering to the edges: a 3% push on the middle eats 1.5% a side, never a word
+            z = 1.0 + 0.03 * u; cx = cy = 0.5
+        elif mv == "in":
             z = 1.0 + 0.16 * u; cx, cy = 0.5 + (fx - 0.5) * u, 0.5 + (fy - 0.5) * u
         elif mv == "out":
             z = 1.16 - 0.16 * u; cx, cy = fx + (0.5 - fx) * u, fy + (0.5 - fy) * u

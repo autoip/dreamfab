@@ -65,6 +65,7 @@ Every batch that costs credits is quoted at full and off-peak price first and wa
    Each `SHOTS` item is (picture, the words it comes in on, move, focus). The moves:
    - `in`/`out`: zoom towards or away from the focus
    - `left`/`right`: pan
+   - `card`: for data cards and slides that are all text. It only pushes 3% into the middle, losing 1.5% a side; `in`, `out` and the pans leave out 12–14% of the width and eat the words near the edges
    - `frame`: the whole picture in a gold frame, for covers with lettering
    - `scroll`: a handscroll drawn on white, cut out and panned right to left
 
