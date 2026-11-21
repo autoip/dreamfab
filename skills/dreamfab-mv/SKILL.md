@@ -106,8 +106,13 @@ read it before planning shots.
     Test & compare for Shorts), titles, description,
     chapters, tags, social posts — `ROOT/docs/en/PUBLISHING.md`.
     Upload: `mv/youtube_upload.py P --dry-run`, then without it (private by default; the user publishes in Studio).
-    Steps done by hand afterwards (end screen, cards, pinned comment, publish) go into the publishing log right after:
-    `dreamfab/youtube_log.py add VIDEO ACTION TEXT`.
+    With the switch `youtube.links` on, a new upload's description gets next/related MV links, the playlist link and
+    search words (traditional + simplified; write aliases such as the poem name under a `搜尋字` section of
+    `YouTube_SEO.txt`). Never rewrite videos already uploaded unless the user asks.
+    Required right after every new MV / compilation upload, in Studio via Chrome (the API cannot): an end screen with
+    the next MV (or the latest upload) + the season playlist + subscribe. After every Short: Related video = the full
+    MV. Steps done by hand afterwards (end screen, related video, cards, pinned comment, publish) go into the
+    publishing log right after: `dreamfab/youtube_log.py add VIDEO ACTION TEXT`.
     Never make a video public or schedule it unless the user asks. Read the channel name it prints; one Google account
     can own several channels. The API description limit is 5,000 bytes (about 1,600 CJK characters).
     Playlists: `dreamfab/youtube_playlists.py list`, then sort / add / remove / edit / delete / replace: run each without
