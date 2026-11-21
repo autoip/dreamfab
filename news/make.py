@@ -61,7 +61,8 @@ SERIES/series.py (the show; see examples/news/demo):
                                      skipped when it starts after `latest`; prompt= the instructions (default
                                      news/daily_prompt.md), task= the scheduler's name for it; chrome=True lets
                                      the run use the browser too (Claude in Chrome: a Facebook Reel, `fb`)
-  FB_LINK = "YouTube："               the line over the YouTube link in the Facebook caption (`fb`)
+  FB_LINK = "完整影片在 YouTube…"     the line in the Facebook caption that points to the channel, in words: the
+                                     caption carries no link (a post with a link reaches fewer people) (`fb`)
   ROTA = {"fri": dict(ANCHOR="cast/ANCHOR_D.png", VOICE="voices/ANCHOR_D.wav"), "2026-11-05": dict(...)}
                                      another anchor (or any setting) on a weekday or a date; a date wins
   TITLE_PREFIX = "EP{ep}｜"           put before the titles (SEO file, upload); {ep} = the episode folder's number
@@ -1054,9 +1055,10 @@ def render(day):
 def fb(day, posted=None):
     """out/<NAME>_fb.mp4 and out/<NAME>_fb.txt: the episode as a Facebook Reel and Story, posted in a browser (a personal
     profile has no API). The copy is squeezed under FB_MAX_MB (default 9.5: the browser tool takes 10 MB at most) in two
-    passes, the original kept. The caption: title A, the description's first paragraph, FB_LINK (series.py) with the
-    YouTube link on its own line under it (out/youtube.json: upload first), the sources, the disclaimer (without
-    「本頻道」: it is the person's own profile), the sponsor and the hashtags once each. out/fb.json keeps what is posted:
+    passes, the original kept. The caption: title A, the description's first paragraph, FB_LINK (series.py: the
+    channel named in words), the sources, the disclaimer (without 「本頻道」: it is the person's own profile), the
+    sponsor and the hashtags once each. No link at all, not even a bare domain such as the sponsor's (it becomes a
+    link): Facebook shows a post with a link to fewer people. YouTube still goes first (out/youtube.json). out/fb.json keeps what is posted:
     `fb DAY --posted reel|story` records one, and `fb DAY` says what is left, so a second run posts nothing twice."""
     d, _ = load(day)
     name, od = name_of(day, d), os.path.join(day, "out")
@@ -1092,11 +1094,15 @@ def fb(day, posted=None):
     lines = desc.splitlines()
     pick = lambda test: next((l.strip() for l in lines if test(l.strip())), "")
     tags = list(dict.fromkeys(t for l in lines if l.strip().startswith("#") for t in l.split()))
-    url = "https://youtu.be/" + json.load(open(yt_p, encoding="utf-8"))["id"]
-    caption = "\n".join([titled(title, day, d), "", desc.split("\n\n")[0].strip(), "", d.get("FB_LINK", "YouTube："), url, "",
+    caption = "\n".join([titled(title, day, d), "", desc.split("\n\n")[0].strip(), "", d.get("FB_LINK", "完整影片在 YouTube"), "",
                          pick(lambda l: l.startswith("資料來源")),
                          pick(lambda l: "不構成投資建議" in l).replace("本頻道非", "非").replace("本頻道", ""),
                          pick(lambda l: "贊助" in l), " ".join(tags)]).strip() + "\n"
+    # no link anywhere (Facebook shows a post with one to fewer people): URLs go; a bare domain, which Facebook turns
+    # into a link, keeps its name (FB_NAMES in series.py, e.g. {"autoip.ai": "AutoIP"}, else the part before the dot)
+    caption = re.sub(r"[ \t]*(?:https?://|www\.)\S+", "", caption)
+    caption = re.sub(r"\b[A-Za-z][\w-]*\.(?:ai|com|net|org|io|app|tw|co)(?:\.[a-z]{2})?\b",
+                     lambda m: d.get("FB_NAMES", {}).get(m.group(0), m.group(0).split(".")[0]), caption)
     open(os.path.join(od, f"{name}_fb.txt"), "w", encoding="utf-8", newline="\n").write(caption)
     mb = os.path.getsize(out) / 1_000_000
     left = [k for k in ("reel", "story") if k not in state]
