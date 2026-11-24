@@ -54,6 +54,8 @@ Once when the research is written, once more before the render:
 
 A line that fails: rewrite, then publish. A doubt: keep it in the script's "left out" list and tell the user.
 
+**Replies to comments follow it too** (`dreamfab/youtube_comments.py`, [CORE.md, “Answering comments”](../CORE.md#answering-comments)): asked whether to buy or where it goes, answer that the channel gives no buy or sell advice and point to the numbers and sources in the video; take no side; no links; the user reads them before they go out.
+
 ## 6. Sources
 
 - FSC Securities and Futures Bureau letter 2023-06-13 No. 1120340840, the SITCA Q&A on what counts as running a consulting business
