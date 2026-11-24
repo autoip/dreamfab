@@ -17,9 +17,10 @@ want the dropped pairs back, or the text sent in simplified. Why and how: docs/z
 (docs/en/PRONUNCIATION.md).
 """
 SAY = [
-    # polyphones: the voice picks the other reading (應考慮 heard as 因考慮; 回檔 heard as 回蕩, the mainland dàng)
+    # polyphones: the voice picks the other reading (應考慮 heard as 因考慮; 回檔 heard as 回蕩, the mainland dàng;
+    # 禁空令 heard as 净空令)
     ("供給", "供擠"), ("重啟", "崇啟"), ("金鑰", "金要"), ("門檻", "門砍"), ("乾脆", "甘脆"), ("應考慮", "英考慮"),
-    ("回檔", "回擋"),
+    ("回檔", "回擋"), ("禁空", "進空"),
     # rarer characters, read as a look-alike or a guess
     ("銦", "因"), ("渦輪", "窩輪"), ("駭客", "害客"), ("反駁", "反伯"), ("帳上", "丈上"), ("釣魚", "吊魚"),
     ("外洩", "外謝"), ("飆漲", "標漲"),
@@ -27,6 +28,8 @@ SAY = [
     # 美媒 美为)
     ("光纖", "光仙"), ("叢集", "從集"), ("情報", "晴報"), ("攻擊", "公擊"), ("註冊", "註策"), ("機關", "基關"),
     ("資料", "姿料"), ("布蘭特", "步蘭特"), ("夜盤", "業盤"), ("美媒", "美梅"),
+    # not swapped: 今天 (now and then heard as 今年, but this voice reads 今添 as 驚天): rewrite that line instead,
+    # e.g. 今天起 -> 今天開始
     # gone since 2026-11-06, when AutoIP began reading Chinese as simplified (character by character): 廣告, 報告,
     # 下載, 學習, 推薦, 獎勵, 蒐集, 訴訟, 贊助 were misread because they were written in traditional characters
     # chosen by the user's ear
